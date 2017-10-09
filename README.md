@@ -30,6 +30,7 @@ REDIS_URL="url-to-redis-instance"
 # optional, defaults to sqlite:
 DATABASE_URL="database-url"
 SECURE_SSL_REDIRECT="False"  # For local development - disable automatic redirect to https
+SLACK_BOT_ACCESS_TOKEN="slack-bot-token"
 ```
 
 For development, to avoid using Google authentication, modify `AUTHENTICATION_BACKENDS` from `invoice_checking/settings.py`.

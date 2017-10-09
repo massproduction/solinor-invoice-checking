@@ -31,6 +31,8 @@ REDIS_URL="url-to-redis-instance"
 DATABASE_URL="database-url"
 SECURE_SSL_REDIRECT="False"  # For local development - disable automatic redirect to https
 SLACK_BOT_ACCESS_TOKEN="slack-bot-token"
+AWS_SECRET_KEY="aws-secret-key"
+AWS_ACCESS_KEY="aws-access-key"
 ```
 
 For development, to avoid using Google authentication, modify `AUTHENTICATION_BACKENDS` from `invoice_checking/settings.py`.

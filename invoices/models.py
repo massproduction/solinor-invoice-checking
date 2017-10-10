@@ -232,11 +232,11 @@ class WeeklyReport(models.Model):
 
     @property
     def week_start_date(self):
-        return date_utils.week_start_date(self.month, self.week)
+        return date_utils.week_start_date(self.year, self.week)
 
     @property
     def week_end_date(self):
-        return date_utils.week_end_date(self.month, self.week)
+        return date_utils.week_end_date(self.year, self.week)
 
     @property
     def processed_tags(self):

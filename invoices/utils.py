@@ -6,7 +6,7 @@ from django.utils.dateparse import parse_datetime as django_parse_datetime
 from django.conf import settings
 
 from invoices.tenkfeet_api import TenkFeetApi
-from invoices.models import HourEntry, Invoice, is_phase_billable, Project, FeetUser
+from invoices.models import HourEntry, Invoice, is_phase_billable, Project, FeetUser, WeeklyReport
 from invoices.slack import send_slack_notification
 from invoices.invoice_utils import calculate_entry_stats, get_aws_entries
 
@@ -174,6 +174,13 @@ class HourEntryUpdate(object):
         else:
             logger.info("Creating a new invoice: %s", invoice_key)
             invoice, _ = Invoice.objects.update_or_create(year=data["date"].year, month=data["date"].month, client=data["client"], project=data["project"], defaults={"tags": data["project_tags"]})
+            weekly_report, _ = WeeklyReport.objects.update_or_create(
+                year=data["date"].year,
+                month=data["date"].month,
+                week=data["date"].week,
+                client=data["client"],
+                project=data["project"],
+                defaults={"tags": data["project_tags"]})
             self.invoices_data[invoice_key] = invoice
             return invoice
 

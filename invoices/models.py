@@ -52,6 +52,7 @@ class HourEntry(models.Model):
     calculated_has_category = models.BooleanField(blank=True, default=True, verbose_name="Has category")
 
     invoice = models.ForeignKey("Invoice", null=True)
+    weekly_report = models.ForeignKey("WeeklyReport", null=True)
     project_m = models.ForeignKey("Project", null=True)
 
     def update_calculated_fields(self):

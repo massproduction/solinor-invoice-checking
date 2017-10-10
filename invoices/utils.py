@@ -174,15 +174,19 @@ class HourEntryUpdate(object):
         else:
             logger.info("Creating a new invoice: %s", invoice_key)
             invoice, _ = Invoice.objects.update_or_create(year=data["date"].year, month=data["date"].month, client=data["client"], project=data["project"], defaults={"tags": data["project_tags"]})
-            weekly_report, _ = WeeklyReport.objects.update_or_create(
-                year=data["date"].year,
-                month=data["date"].month,
-                week=data["date"].isocalendar()[1], #week number, 1-53
-                client=data["client"],
-                project=data["project"],
-                defaults={"tags": data["project_tags"]})
             self.invoices_data[invoice_key] = invoice
             return invoice
+
+    def match_weekly_report(self, data):
+        weekly_report, _ = WeeklyReport.objects.update_or_create(
+            year=data["date"].year,
+            month=data["date"].month,
+            week=data["date"].isocalendar()[1],  # week number, 1-53
+            client=data["client"],
+            project=data["project"],
+            defaults={"tags": data["project_tags"]})
+
+        return weekly_report
 
     def match_user(self, email):
         return self.user_data.get(email)
@@ -238,6 +242,7 @@ class HourEntryUpdate(object):
             assert data["incurred_hours"] >= 0
 
             data["invoice"] = self.match_invoice(data)
+            data["weekly_report"] = self.match_weekly_report(data)
             data["user_m"] = self.match_user(data["user_email"])
             entry = HourEntry(**data)
             entry.update_calculated_fields()

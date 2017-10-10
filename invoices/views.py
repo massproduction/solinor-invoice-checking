@@ -614,3 +614,82 @@ def invoice_page(request, invoice_id, **_):
         pass
 
     return render(request, "invoice_page.html", context)
+
+@login_required
+def weekly_report(request, invoice_id, **_):
+    invoice = get_object_or_404(Invoice, invoice_id=invoice_id)
+
+    if request.method == "POST":
+        invoice_number = request.POST.get("invoiceNumber") or None
+        if invoice_number:
+            invoice_number = invoice_number.strip()
+        comment = Comments(comments=request.POST.get("changesForInvoice"),
+                           checked=request.POST.get("invoiceChecked", False) in (True, "true", "on"),
+                           checked_non_billable_ok=request.POST.get("nonBillableHoursOk", False) in (True, "true", "on"),
+                           checked_bill_rates_ok=request.POST.get("billableIncorrectPriceOk", False) in (True, "true", "on"),
+                           checked_phases_ok=request.POST.get("nonPhaseSpecificOk", False) in (True, "true", "on"),
+                           checked_no_category_ok=request.POST.get("noCategoryOk", False) in (True, "true", "on"),
+                           checked_changes_last_month=request.POST.get("remarkableChangesOk", False) in (True, "true", "on"),
+                           invoice_number=invoice_number,
+                           invoice_sent_to_customer=request.POST.get("invoiceSentToCustomer", False) in (True, "true", "on"),
+                           user=request.user.email,
+                           invoice=invoice)
+        comment.save()
+        invoice.is_approved = comment.checked
+        invoice.has_comments = comment.has_comments()
+        invoice_sent_earlier = invoice.invoice_state in ("P", "S")
+        invoice.update_state(comment)
+        invoice.save()
+        messages.add_message(request, messages.INFO, 'Saved.')
+        if not invoice_sent_earlier and invoice.invoice_state in ("P", "S") and invoice.project_m:
+            for project_fixed_entry in ProjectFixedEntry.objects.filter(project=invoice.project_m):
+                if InvoiceFixedEntry.objects.filter(invoice=invoice, price=project_fixed_entry.price, description=project_fixed_entry.description).count() == 0:
+                    InvoiceFixedEntry(invoice=invoice, price=project_fixed_entry.price, description=project_fixed_entry.description).save()
+        if invoice_sent_earlier and invoice.invoice_state not in ("P", "S"):
+            InvoiceFixedEntry.objects.filter(invoice=invoice).delete()
+        return HttpResponseRedirect(reverse("invoice", args=[invoice.invoice_id]))
+
+    today = datetime.date.today()
+    due_date = today + datetime.timedelta(days=14)
+
+    entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
+    aws_entries = None
+    if invoice.project_m:
+        aws_accounts = invoice.project_m.amazon_account.all()
+        aws_entries = get_aws_entries(aws_accounts, invoice.month_start_date, invoice.month_end_date)
+    entry_data = calculate_entry_stats(entries, invoice.get_fixed_invoice_rows(), aws_entries)
+
+    try:
+        latest_comments = Comments.objects.filter(invoice=invoice).latest()
+    except Comments.DoesNotExist:
+        latest_comments = None
+
+
+    previous_invoices = []
+    if invoice.project_m:
+        previous_invoices = Invoice.objects.filter(project_m=invoice.project_m)
+
+    context = {
+        "today": today,
+        "due_date": due_date,
+        "entries": entries,
+        "form_data": latest_comments,
+        "invoice": invoice,
+        "previous_invoices": previous_invoices,
+        "recent_invoice": abs((datetime.date.today() - datetime.date(invoice.year, invoice.month, 1)).days) < 60,
+    }
+    context.update(entry_data)
+
+    previous_invoice_month = invoice.month - 1
+    previous_invoice_year = invoice.year
+    if previous_invoice_month == 0:
+        previous_invoice_month = 12
+        previous_invoice_year -= 1
+    try:
+        last_month_invoice = Invoice.objects.get(project=invoice.project, client=invoice.client, year=previous_invoice_year, month=previous_invoice_month)
+        context["last_month_invoice"] = last_month_invoice
+        context["diff_last_month"] = last_month_invoice.compare(invoice)
+    except Invoice.DoesNotExist:
+        pass
+
+    return render(request, "weekly_report.html", context)

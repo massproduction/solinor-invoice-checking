@@ -616,8 +616,8 @@ def invoice_page(request, invoice_id, **_):
     return render(request, "invoice_page.html", context)
 
 @login_required
-def weekly_report(request, invoice_id, **_):
-    invoice = get_object_or_404(Invoice, invoice_id=invoice_id)
+def weekly_report(request, **_):
+    invoice = None
 
     if request.method == "POST":
         invoice_number = request.POST.get("invoiceNumber") or None
@@ -654,10 +654,6 @@ def weekly_report(request, invoice_id, **_):
 
     entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
     aws_entries = None
-    if invoice.project_m:
-        aws_accounts = invoice.project_m.amazon_account.all()
-        aws_entries = get_aws_entries(aws_accounts, invoice.month_start_date, invoice.month_end_date)
-    entry_data = calculate_entry_stats(entries, invoice.get_fixed_invoice_rows(), aws_entries)
 
     try:
         latest_comments = Comments.objects.filter(invoice=invoice).latest()
@@ -666,8 +662,6 @@ def weekly_report(request, invoice_id, **_):
 
 
     previous_invoices = []
-    if invoice.project_m:
-        previous_invoices = Invoice.objects.filter(project_m=invoice.project_m)
 
     context = {
         "today": today,
@@ -676,20 +670,7 @@ def weekly_report(request, invoice_id, **_):
         "form_data": latest_comments,
         "invoice": invoice,
         "previous_invoices": previous_invoices,
-        "recent_invoice": abs((datetime.date.today() - datetime.date(invoice.year, invoice.month, 1)).days) < 60,
     }
-    context.update(entry_data)
 
-    previous_invoice_month = invoice.month - 1
-    previous_invoice_year = invoice.year
-    if previous_invoice_month == 0:
-        previous_invoice_month = 12
-        previous_invoice_year -= 1
-    try:
-        last_month_invoice = Invoice.objects.get(project=invoice.project, client=invoice.client, year=previous_invoice_year, month=previous_invoice_month)
-        context["last_month_invoice"] = last_month_invoice
-        context["diff_last_month"] = last_month_invoice.compare(invoice)
-    except Invoice.DoesNotExist:
-        pass
 
     return render(request, "weekly_report.html", context)

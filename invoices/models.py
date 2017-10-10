@@ -186,6 +186,126 @@ class Invoice(models.Model):
         unique_together = ("year", "month", "client", "project")
         ordering = ("-year", "-month", "client", "project")
 
+class WeeklyReport(models.Model):
+    INVOICE_STATE_CHOICES = (
+        ("C", "Created"),
+        ("A", "Approved"),
+        ("P", "Preview"),
+        ("S", "Sent"),
+    )
+
+    ISSUE_FIELDS = ("billable_incorrect_price_count", "non_billable_hours_count", "non_phase_specific_count", "not_approved_hours_count", "empty_descriptions_count")
+    invoice_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    year = models.IntegerField()
+    month = models.IntegerField()
+    week = models.IntegerField()
+
+    project_m = models.ForeignKey("Project", null=True)
+
+    client = models.CharField(max_length=100)
+    project = models.CharField(max_length=100)
+    tags = models.CharField(max_length=1024, null=True, blank=True)
+
+    is_approved = models.BooleanField(blank=True, default=False)
+    has_comments = models.BooleanField(blank=True, default=False)
+    incorrect_entries_count = models.IntegerField(default=0)
+    billable_incorrect_price_count = models.IntegerField(default=0)
+    non_billable_hours_count = models.IntegerField(default=0)
+    non_phase_specific_count = models.IntegerField(default=0)
+    not_approved_hours_count = models.IntegerField(default=0)
+    no_category_count = models.IntegerField(default=0)
+    empty_descriptions_count = models.IntegerField(default=0)
+    bill_rate_avg = models.FloatField(default=0)
+    incurred_hours = models.FloatField(default=0, verbose_name="Incurred hours")
+    incurred_billable_hours = models.FloatField(default=0)
+    billable_percentage = models.FloatField(default=0)
+    incurred_money = models.FloatField(default=0, verbose_name="Incurred money")
+    invoice_state = models.CharField(max_length=1, choices=INVOICE_STATE_CHOICES, default='C')
+
+    @property
+    def month_start_date(self):
+        return date_utils.month_start_date(self.year, self.month)
+
+    @property
+    def month_end_date(self):
+        return date_utils.month_end_date(self.year, self.month)
+
+    @property
+    def week_start_date(self):
+        return date_utils.week_start_date(self.month, self.week)
+
+    @property
+    def week_end_date(self):
+        return date_utils.week_end_date(self.month, self.week)
+
+    @property
+    def processed_tags(self):
+        if self.tags:
+            return self.tags.split(",")
+        return []
+
+    @property
+    def date(self):
+        return "%s-%02d" % (self.year, self.month)
+
+    @property
+    def full_name(self):
+        return "%s - %s" % (self.client, self.project)
+
+    def __unicode__(self):
+        return u"%s - %s" % (self.full_name, self.date)
+
+    def __str__(self):
+        return u"%s - %s" % (self.full_name, self.date)
+
+    def update_state(self, comment):
+        self.invoice_state = "C"
+        if comment.checked:
+            self.invoice_state = "A"
+        if comment.invoice_number:
+            self.invoice_state = "P"
+        if comment.invoice_sent_to_customer:
+            self.invoice_state = "S"
+        return self.invoice_state
+
+    def get_tags(self):
+        if self.tags:
+            return self.tags.split(",")
+
+    def compare(self, other):
+        def calc_stats(field_name):
+            field_value = getattr(self, field_name)
+            other_field_value = getattr(other, field_name)
+            diff = (other_field_value or 0) - (field_value or 0)
+            if not field_value:
+                percentage = None
+            else:
+                percentage = diff / field_value * 100
+            return {"diff": diff, "percentage": percentage, "this_value": field_value, "other_value": other_field_value}
+
+        data = {
+            "hours": calc_stats("incurred_hours"),
+            "bill_rate_avg": calc_stats("bill_rate_avg"),
+            "money": calc_stats("incurred_money"),
+        }
+        if abs(data["hours"]["diff"]) > 10 and (not data["hours"]["percentage"] or abs(data["hours"]["percentage"]) > 25):
+            data["remarkable"] = True
+        if abs(data["bill_rate_avg"]["diff"]) > 5 and data["bill_rate_avg"]["this_value"] > 0 and data["bill_rate_avg"]["other_value"] > 0:
+            data["remarkable"] = True
+        if abs(data["money"]["diff"]) > 2000 and (not data["money"]["percentage"] or abs(data["money"]["percentage"]) > 25):
+            data["remarkable"] = True
+        return data
+
+    def get_fixed_invoice_rows(self):
+        fixed_invoice_rows = list(InvoiceFixedEntry.objects.filter(invoice=self))
+        if self.invoice_state not in ("P", "S") and self.project_m:
+            fixed_invoice_rows.extend(list(ProjectFixedEntry.objects.filter(project=self.project_m)))
+        return fixed_invoice_rows
+
+    class Meta:
+        unique_together = ("year", "month", "client", "project")
+        ordering = ("-year", "-month", "client", "project")
+
 
 class SlackChannel(models.Model):
     channel_id = models.CharField(max_length=50, primary_key=True, editable=False)

@@ -177,7 +177,7 @@ class HourEntryUpdate(object):
             weekly_report, _ = WeeklyReport.objects.update_or_create(
                 year=data["date"].year,
                 month=data["date"].month,
-                week=data["date"].week,
+                week=data["date"].isocalendar()[1], #week number, 1-53
                 client=data["client"],
                 project=data["project"],
                 defaults={"tags": data["project_tags"]})

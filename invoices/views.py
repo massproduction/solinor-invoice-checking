@@ -20,7 +20,7 @@ from django.db.models.functions import TruncMonth
 
 from django_tables2 import RequestConfig
 
-from invoices.models import HourEntry, Invoice, Comments, DataUpdate, FeetUser, Project, AuthToken, InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount
+from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
 from invoices.pdf_utils import generate_hours_pdf_for_invoice
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
@@ -587,8 +587,12 @@ def invoice_page(request, invoice_id, **_):
 
 
     previous_invoices = []
+    weekly_reports = []
+    recent_weekly_report = None
     if invoice.project_m:
         previous_invoices = Invoice.objects.filter(project_m=invoice.project_m)
+        weekly_reports = WeeklyReport.objects.filter(project_m=invoice.project_m, client=invoice.client)
+        recent_weekly_report = weekly_reports[0]
 
     context = {
         "today": today,
@@ -598,7 +602,9 @@ def invoice_page(request, invoice_id, **_):
         "invoice": invoice,
         "previous_invoices": previous_invoices,
         "recent_invoice": abs((datetime.date.today() - datetime.date(invoice.year, invoice.month, 1)).days) < 60,
+        "recent_weekly_report": recent_weekly_report
     }
+
     context.update(entry_data)
 
     previous_invoice_month = invoice.month - 1
@@ -616,61 +622,24 @@ def invoice_page(request, invoice_id, **_):
     return render(request, "invoice_page.html", context)
 
 @login_required
-def weekly_report(request, **_):
-    invoice = None
-
-    if request.method == "POST":
-        invoice_number = request.POST.get("invoiceNumber") or None
-        if invoice_number:
-            invoice_number = invoice_number.strip()
-        comment = Comments(comments=request.POST.get("changesForInvoice"),
-                           checked=request.POST.get("invoiceChecked", False) in (True, "true", "on"),
-                           checked_non_billable_ok=request.POST.get("nonBillableHoursOk", False) in (True, "true", "on"),
-                           checked_bill_rates_ok=request.POST.get("billableIncorrectPriceOk", False) in (True, "true", "on"),
-                           checked_phases_ok=request.POST.get("nonPhaseSpecificOk", False) in (True, "true", "on"),
-                           checked_no_category_ok=request.POST.get("noCategoryOk", False) in (True, "true", "on"),
-                           checked_changes_last_month=request.POST.get("remarkableChangesOk", False) in (True, "true", "on"),
-                           invoice_number=invoice_number,
-                           invoice_sent_to_customer=request.POST.get("invoiceSentToCustomer", False) in (True, "true", "on"),
-                           user=request.user.email,
-                           invoice=invoice)
-        comment.save()
-        invoice.is_approved = comment.checked
-        invoice.has_comments = comment.has_comments()
-        invoice_sent_earlier = invoice.invoice_state in ("P", "S")
-        invoice.update_state(comment)
-        invoice.save()
-        messages.add_message(request, messages.INFO, 'Saved.')
-        if not invoice_sent_earlier and invoice.invoice_state in ("P", "S") and invoice.project_m:
-            for project_fixed_entry in ProjectFixedEntry.objects.filter(project=invoice.project_m):
-                if InvoiceFixedEntry.objects.filter(invoice=invoice, price=project_fixed_entry.price, description=project_fixed_entry.description).count() == 0:
-                    InvoiceFixedEntry(invoice=invoice, price=project_fixed_entry.price, description=project_fixed_entry.description).save()
-        if invoice_sent_earlier and invoice.invoice_state not in ("P", "S"):
-            InvoiceFixedEntry.objects.filter(invoice=invoice).delete()
-        return HttpResponseRedirect(reverse("invoice", args=[invoice.invoice_id]))
+def weekly_report_page(request, weekly_report_id, **_):
+    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
     today = datetime.date.today()
     due_date = today + datetime.timedelta(days=14)
 
-    entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
-    aws_entries = None
+    entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
+    previous_weekly_reports = []
 
-    try:
-        latest_comments = Comments.objects.filter(invoice=invoice).latest()
-    except Comments.DoesNotExist:
-        latest_comments = None
-
-
-    previous_invoices = []
+    if weekly_report.project_m:
+        previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, client=weekly_report.client)
 
     context = {
         "today": today,
         "due_date": due_date,
         "entries": entries,
-        "form_data": latest_comments,
-        "invoice": invoice,
-        "previous_invoices": previous_invoices,
+        "weekly_report": weekly_report,
+        "previous_weekly_reports": previous_weekly_reports,
     }
 
-
-    return render(request, "weekly_report.html", context)
+    return render(request, "weekly_report_page.html", context)

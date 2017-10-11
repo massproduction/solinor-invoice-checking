@@ -122,6 +122,14 @@ def update_projects():
                 invoice.save()
                 break
 
+    for report in WeeklyReport.objects.filter(project_m=None):
+        for project in projects:
+            if project.name == report.project and project.client == report.client:
+                logger.info("Updating weekly report %s with project %s", report, project)
+                report.project_m = project
+                report.save()
+                break
+
 def get_projects():
     projects_data = {}
     for project in Project.objects.all():

@@ -136,6 +136,12 @@ def get_invoices():
         invoices_data[invoice_key] = invoice
     return invoices_data
 
+def get_weekly_reports():
+    weekly_report_data = {}
+    for weekly_report in WeeklyReport.objects.all():
+        weekly_report_key = u"%s-%s %s - %s" % (weekly_report.year, weekly_report.week, weekly_report.client, weekly_report.project)
+        weekly_report_data[weekly_report_key] = weekly_report
+    return weekly_report_data
 
 def get_users():
     users = {}
@@ -143,11 +149,11 @@ def get_users():
         users[user.email] = user
     return users
 
-
 class HourEntryUpdate(object):
     def __init__(self, start_date, end_date):
         self.logger = logging.getLogger(__name__)
         self.invoices_data = get_invoices()
+        self.weekly_report_data = get_weekly_reports()
         self.projects_data = get_projects()
         self.user_data = get_users()
         self.start_date = start_date
@@ -178,15 +184,25 @@ class HourEntryUpdate(object):
             return invoice
 
     def match_weekly_report(self, data):
-        weekly_report, _ = WeeklyReport.objects.update_or_create(
-            year=data["date"].year,
-            month=data["date"].month,
-            week=data["date"].isocalendar()[1],  # week number, 1-53
-            client=data["client"],
-            project=data["project"],
-            defaults={"tags": data["project_tags"]})
-
-        return weekly_report
+        week_number = data["date"].isocalendar()[1] # week number, 1-53
+        weekly_report_key = u"%s-%s %s - %s" % (data["date"].year, week_number, data["client"], data["project"])
+        weekly_report = self.weekly_report_data.get(weekly_report_key)
+        if weekly_report:
+            logger.debug("Weekly report already exists: %s", weekly_report_key)
+            if weekly_report.tags != data["project_tags"]:
+                weekly_report.tags = data["project_tabs"]
+                weekly_report.save()
+            return weekly_report
+        else:
+            logger.info("Creating a new weekly report %s", weekly_report_key)
+            weekly_report, _ = WeeklyReport.objects.update_or_create(
+                year=data["date"].year,
+                week=week_number,
+                client=data["client"],
+                project=data["project"],
+                defaults={"tags": data["project_tags"]})
+            self.weekly_report_data[weekly_report_key] = weekly_report
+            return weekly_report
 
     def match_user(self, email):
         return self.user_data.get(email)

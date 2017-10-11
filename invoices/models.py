@@ -196,9 +196,8 @@ class WeeklyReport(models.Model):
     )
 
     ISSUE_FIELDS = ("billable_incorrect_price_count", "non_billable_hours_count", "non_phase_specific_count", "not_approved_hours_count", "empty_descriptions_count")
-    invoice_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    weekly_report_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     year = models.IntegerField()
-    month = models.IntegerField()
     week = models.IntegerField()
 
     project_m = models.ForeignKey("Project", null=True)
@@ -224,14 +223,6 @@ class WeeklyReport(models.Model):
     invoice_state = models.CharField(max_length=1, choices=INVOICE_STATE_CHOICES, default='C')
 
     @property
-    def month_start_date(self):
-        return date_utils.month_start_date(self.year, self.month)
-
-    @property
-    def month_end_date(self):
-        return date_utils.month_end_date(self.year, self.month)
-
-    @property
     def week_start_date(self):
         return date_utils.week_start_date(self.year, self.week)
 
@@ -247,7 +238,7 @@ class WeeklyReport(models.Model):
 
     @property
     def date(self):
-        return "%s-%02d" % (self.year, self.month)
+        return "%s-%02d" % (self.year, self.week)
 
     @property
     def full_name(self):
@@ -297,15 +288,9 @@ class WeeklyReport(models.Model):
             data["remarkable"] = True
         return data
 
-    def get_fixed_invoice_rows(self):
-        fixed_invoice_rows = list(InvoiceFixedEntry.objects.filter(invoice=self))
-        if self.invoice_state not in ("P", "S") and self.project_m:
-            fixed_invoice_rows.extend(list(ProjectFixedEntry.objects.filter(project=self.project_m)))
-        return fixed_invoice_rows
-
     class Meta:
-        unique_together = ("year", "month", "client", "project")
-        ordering = ("-year", "-month", "client", "project")
+        unique_together = ("year", "week", "client", "project")
+        ordering = ("-year", "-week", "client", "project")
 
 
 class SlackChannel(models.Model):

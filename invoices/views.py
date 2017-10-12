@@ -24,7 +24,7 @@ from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpda
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
 from invoices.pdf_utils import generate_hours_pdf_for_invoice
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
-from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, get_aws_entries
+from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries
 import invoices.date_utils as date_utils
 from invoices.chart_utils import gen_treemap_data_projects, gen_treemap_data_users
 
@@ -595,7 +595,6 @@ def invoice_page(request, invoice_id, **_):
 
 
     previous_invoices = []
-    weekly_reports = []
     recent_weekly_report = None
     if invoice.project_m:
         previous_invoices = Invoice.objects.filter(project_m=invoice.project_m)
@@ -637,7 +636,7 @@ def weekly_report_page(request, weekly_report_id, **_):
     due_date = today + datetime.timedelta(days=14)
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
-    entry_data = calculate_entry_stats(entries)
+    entry_data = calculate_weekly_entry_stats(entries)
     previous_weekly_reports = []
 
     if weekly_report.project_m:

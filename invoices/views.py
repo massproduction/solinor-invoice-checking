@@ -214,6 +214,14 @@ def person_details_month(request, year, month, user_guid):
     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
+# @login_required
+# def person_details_week(request, year, week, user_guid):
+#     year = int(year)
+#     week = int(week)
+#     person = get_object_or_404(FeetUser, guid=user_guid)
+#     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year, date__week=month).select_related("project_m", "user_m").order_by("date")
+#     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
+#     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 @login_required
 def people_list(request):
@@ -629,6 +637,7 @@ def weekly_report_page(request, weekly_report_id, **_):
     due_date = today + datetime.timedelta(days=14)
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
+    entry_data = calculate_entry_stats(entries)
     previous_weekly_reports = []
 
     if weekly_report.project_m:
@@ -641,5 +650,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         "weekly_report": weekly_report,
         "previous_weekly_reports": previous_weekly_reports,
     }
+
+    context.update(entry_data)
 
     return render(request, "weekly_report_page.html", context)

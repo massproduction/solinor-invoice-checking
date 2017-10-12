@@ -214,14 +214,16 @@ def person_details_month(request, year, month, user_guid):
     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
-# @login_required
-# def person_details_week(request, year, week, user_guid):
-#     year = int(year)
-#     week = int(week)
-#     person = get_object_or_404(FeetUser, guid=user_guid)
-#     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year, date__week=month).select_related("project_m", "user_m").order_by("date")
-#     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
-#     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
+@login_required
+def person_details_week(request, year, week, user_guid):
+     year = int(year)
+     week = int(week)
+     month = 10
+     person = get_object_or_404(FeetUser, guid=user_guid)
+     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year,
+                                                                     date__range=(date_utils.week_start_date(year, week), date_utils.week_end_date(year, week))).select_related("project_m", "user_m").order_by("date")
+     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "week", order="DESC")
+     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "week": week, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 @login_required
 def people_list(request):

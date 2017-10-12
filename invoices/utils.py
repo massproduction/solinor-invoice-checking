@@ -8,7 +8,7 @@ from django.conf import settings
 from invoices.tenkfeet_api import TenkFeetApi
 from invoices.models import HourEntry, Invoice, is_phase_billable, Project, FeetUser, WeeklyReport
 from invoices.slack import send_slack_notification
-from invoices.invoice_utils import calculate_entry_stats, get_aws_entries
+from invoices.invoice_utils import calculate_entry_stats, get_aws_entries, calculate_weekly_entry_stats
 
 
 logger = logging.getLogger(__name__)  # pylint: disable=invalid-name
@@ -291,12 +291,10 @@ class HourEntryUpdate(object):
 def refresh_stats(start_date, end_date):
     if start_date and end_date:
         invoices = Invoice.objects.filter(year__gte=start_date.year, year__lte=end_date.year, month__gte=start_date.month, month__lte=end_date.month)  # TODO: this is not working properly over new year.
-        weekly_reports = WeeklyReport.objects.filter(year__gte=start_date.year, year__lte=end_date.year, week__gte=start_date.isocalendar()[1], week__lte=end_date.isocalendar()[1])
         logger.info("Updating statistics for invoices between %s and %s: %s invoices", start_date, end_date, invoices.count())
     else:
         logger.info("Updating statistics for all invoices")
         invoices = Invoice.objects.all()
-        weekly_reports = WeeklyReport.objects.all()
     for invoice in invoices:
         entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
         aws_entries = None
@@ -320,9 +318,27 @@ def refresh_stats(start_date, end_date):
             invoice.bill_rate_avg = 0
         invoice.save()
         logger.debug("Updated statistics for %s", invoice)
+
+
+def refresh_weekly_stats(start_date, end_date):
+    if start_date and end_date:
+        weekly_reports = WeeklyReport.objects.filter(
+            year__gte=start_date.year,
+            year__lte=end_date.year,
+            week__gte=start_date.isocalendar()[1],
+            week__lte=end_date.isocalendar()[1])
+        logger.info("Updating statistics for weekly reports between %s and %s: %s invoices",
+                    start_date,
+                    end_date,
+                    weekly_reports.count())
+    else:
+        logger.info("Updating statistics for all weekly reports")
+        weekly_reports = WeeklyReport.objects.all()
     for weekly_report in weekly_reports:
-        entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
+        entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
         aws_entries = None
-        stats = calculate_entry_stats(entries, weekly_report.get_fixed_invoice_rows(), aws_entries)
+        stats = calculate_weekly_entry_stats(entries, aws_entries)
         for field in STATS_FIELDS:
-            setattr(invoice, field, stats[field])
+            setattr(weekly_report, field, stats[field])
+        weekly_report.save()
+        logger.debug("Updated statistics for %s", weekly_report)

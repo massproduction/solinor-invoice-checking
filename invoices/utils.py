@@ -179,7 +179,12 @@ class HourEntryUpdate(object):
             return invoice
         else:
             logger.info("Creating a new invoice: %s", invoice_key)
-            invoice, _ = Invoice.objects.update_or_create(year=data["date"].year, month=data["date"].month, client=data["client"], project=data["project"], defaults={"tags": data["project_tags"]})
+            invoice, _ = Invoice.objects.update_or_create(
+                year=data["date"].year,
+                month=data["date"].month,
+                client=data["client"],
+                project=data["project"],
+                defaults={"tags": data["project_tags"]})
             self.invoices_data[invoice_key] = invoice
             return invoice
 
@@ -187,10 +192,10 @@ class HourEntryUpdate(object):
         week_number = data["date"].isocalendar()[1] # week number, 1-53
         weekly_report_key = u"%s-%s %s - %s" % (data["date"].year, week_number, data["client"], data["project"])
         weekly_report = self.weekly_report_data.get(weekly_report_key)
-        if weekly_report:
+        if weekly_report is not None:
             logger.debug("Weekly report already exists: %s", weekly_report_key)
             if weekly_report.tags != data["project_tags"]:
-                weekly_report.tags = data["project_tabs"]
+                weekly_report.tags = data["project_tags"]
                 weekly_report.save()
             return weekly_report
         else:
@@ -278,10 +283,12 @@ class HourEntryUpdate(object):
 def refresh_stats(start_date, end_date):
     if start_date and end_date:
         invoices = Invoice.objects.filter(year__gte=start_date.year, year__lte=end_date.year, month__gte=start_date.month, month__lte=end_date.month)  # TODO: this is not working properly over new year.
+        weekly_reports = WeeklyReport.objects.filter(year__gte=start_date.year, year__lte=end_date.year, week__gte=start_date.isocalendar()[1], week__lte=end_date.isocalendar()[1])
         logger.info("Updating statistics for invoices between %s and %s: %s invoices", start_date, end_date, invoices.count())
     else:
         logger.info("Updating statistics for all invoices")
         invoices = Invoice.objects.all()
+        weekly_reports = WeeklyReport.objects.all()
     for invoice in invoices:
         entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
         aws_entries = None
@@ -305,3 +312,9 @@ def refresh_stats(start_date, end_date):
             invoice.bill_rate_avg = 0
         invoice.save()
         logger.debug("Updated statistics for %s", invoice)
+    for weekly_report in weekly_reports:
+        entries = HourEntry.objects.filter(invoice=invoice).filter(incurred_hours__gt=0)
+        aws_entries = None
+        stats = calculate_entry_stats(entries, weekly_report.get_fixed_invoice_rows(), aws_entries)
+        for field in STATS_FIELDS:
+            setattr(invoice, field, stats[field])

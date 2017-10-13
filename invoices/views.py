@@ -20,7 +20,8 @@ from django.db.models.functions import TruncMonth
 
 from django_tables2 import RequestConfig
 
-from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount
+from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, \
+    InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount, WeeklyReportComments
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
 from invoices.pdf_utils import generate_hours_pdf_for_invoice
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
@@ -637,6 +638,20 @@ def weekly_report_page(request, weekly_report_id, **_):
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
     entry_data = calculate_weekly_entry_stats(entries)
+
+    if request.method == "POST":
+        comment = WeeklyReportComments(checked=request.POST.get("weeklyReportChecked", False) in (True, "true", "on"),
+                                       user=request.user.email,
+                                       weekly_report=weekly_report)
+        comment.save()
+        weekly_report.is_approved = comment.checked
+        messages.add_message(request, messages.INFO, 'Saved.')
+
+    try:
+        latest_comments = WeeklyReportComments.objects.filter(weekly_report=weekly_report).latest()
+    except WeeklyReportComments.DoesNotExist:
+        latest_comments = None
+
     previous_weekly_reports = []
 
     if weekly_report.project_m:
@@ -647,6 +662,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         "due_date": due_date,
         "entries": entries,
         "weekly_report": weekly_report,
+        "form_data": latest_comments,
         "previous_weekly_reports": previous_weekly_reports,
     }
 

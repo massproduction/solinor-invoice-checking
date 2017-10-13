@@ -375,6 +375,22 @@ class Phase(models.Model):
         return u"Phase: %s - %s" % (self.project, self.phase_name)
 
 
+class WeeklyReportComments(models.Model):
+    weekly_report = models.ForeignKey("WeeklyReport")
+    timestamp = models.DateTimeField(auto_now_add=True)
+    checked = models.BooleanField(blank=True, default=False)
+    user = models.TextField(max_length=100)
+
+    class Meta:
+        get_latest_by = "timestamp"
+
+    def __unicode__(self):
+        return u"%s - %s - %s" % (self.invoice, self.timestamp, self.user)
+
+    def __str__(self):
+        return u"%s - %s - %s" % (self.invoice, self.timestamp, self.user)
+
+
 class Comments(models.Model):
     invoice = models.ForeignKey("Invoice")
     timestamp = models.DateTimeField(auto_now_add=True)

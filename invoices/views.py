@@ -652,4 +652,20 @@ def weekly_report_page(request, weekly_report_id, **_):
 
     context.update(entry_data)
 
+    previous_weekly_report_week = weekly_report.week - 1
+    previous_weekly_report_year = weekly_report.year
+    if previous_weekly_report_week == 0:
+        previous_weekly_report_week = 51
+        previous_weekly_report_year -= 1
+    try:
+        last_weeks_report = WeeklyReport.objects.get(
+            project=weekly_report.project,
+            client=weekly_report.client,
+            year=previous_weekly_report_year,
+            week=previous_weekly_report_week)
+        context["last_weeks_report"] = last_weeks_report
+        context["diff_last_week"] = last_weeks_report.compare(weekly_report)
+    except Invoice.DoesNotExist:
+        pass
+
     return render(request, "weekly_report_page.html", context)

@@ -251,7 +251,6 @@ class WeeklyReport(models.Model):
 
     def update_state(self, comment):
         self.weekly_report_state = "C"
-        print(comment)
         if comment.checked:
             self.weekly_report_state = "A"
         return self.weekly_report_state

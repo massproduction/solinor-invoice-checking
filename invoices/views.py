@@ -340,6 +340,15 @@ def invoice_hours(request, invoice_id):
     }
     return render(request, "invoice_hours.html", context)
 
+@login_required
+def weekly_report_hours(request, weekly_report_id):
+    weekly_report= get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+    entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0).select_related("user_m")
+    context = {
+        "weekly_report": weekly_report,
+        "entries": entries,
+    }
+    return render(request, "weekly_report_hours.html", context)
 
 @login_required
 def projects_list(request):

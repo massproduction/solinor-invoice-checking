@@ -656,9 +656,9 @@ def weekly_report_page(request, weekly_report_id, **_):
     previous_weekly_report_year = weekly_report.year
     if previous_weekly_report_week == 0:
         if date_utils.weeks_in_a_year(previous_weekly_report_year-1) == 53:
-            previous_weekly_report_week = 52
+            previous_weekly_report_week = 53
         else:
-            previous_weekly_report_week = 51
+            previous_weekly_report_week = 52
         previous_weekly_report_year -= 1
     try:
         last_weeks_report = WeeklyReport.objects.get(

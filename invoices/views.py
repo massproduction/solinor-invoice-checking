@@ -629,6 +629,7 @@ def invoice_page(request, invoice_id, **_):
 
     return render(request, "invoice_page.html", context)
 
+
 @login_required
 def weekly_report_page(request, weekly_report_id, **_):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
@@ -646,6 +647,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         comment.save()
         weekly_report.is_approved = comment.checked
         messages.add_message(request, messages.INFO, 'Saved.')
+        return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
 
     try:
         latest_comments = WeeklyReportComments.objects.filter(weekly_report=weekly_report).latest()

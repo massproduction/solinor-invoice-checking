@@ -22,7 +22,7 @@ from django_tables2 import RequestConfig
 
 from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
-from invoices.pdf_utils import generate_hours_pdf_for_invoice
+from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
 from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries
 import invoices.date_utils as date_utils
@@ -287,6 +287,8 @@ def queue_update(request):
 def get_pdf(request, invoice_id, pdf_type):
     if pdf_type == "hours":
         pdf, title = generate_hours_pdf_for_invoice(request, invoice_id)
+    elif pdf_type == "weekly":
+        pdf, title = generate_hours_pdf_for_weekly_report(request, invoice_id)
     else:
         return HttpResponseBadRequest("Invalid PDF type")
 

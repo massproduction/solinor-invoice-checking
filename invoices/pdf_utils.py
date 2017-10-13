@@ -59,7 +59,7 @@ def generate_hours_pdf_for_weekly_report(request, weekly_report):
     entries = HourEntry.objects.filter(project=weekly_report_data.project,
                                        client=weekly_report_data.client,
                                        date__year__gte=weekly_report_data.year,
-                                       date__week=weekly_report_data.month).filter(incurred_hours__gt=0)
+                                       date__week=weekly_report_data.week).filter(incurred_hours__gt=0)
     phases = {}
     for entry in entries:
         if entry.phase_name not in phases:

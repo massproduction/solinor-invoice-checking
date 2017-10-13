@@ -3,6 +3,7 @@
 import datetime
 import json
 import copy
+import calendar
 from collections import defaultdict
 
 import redis
@@ -214,14 +215,33 @@ def person_details_month(request, year, month, user_guid):
     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
-# @login_required
-# def person_details_week(request, year, week, user_guid):
-#     year = int(year)
-#     week = int(week)
-#     person = get_object_or_404(FeetUser, guid=user_guid)
-#     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year, date__week=month).select_related("project_m", "user_m").order_by("date")
-#     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
-#     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
+@login_required
+def person_details_week(request, year, week, user_guid):
+     year = int(year)
+     week = int(week)
+     week_start = date_utils.week_start_date(year, week)
+     week_end = date_utils.week_end_date(year, week)
+     person = get_object_or_404(FeetUser, guid=user_guid)
+     entries = person.hourentry_set.exclude(incurred_hours=0)\
+         .filter(date__year=year, date__range=(week_start, week_end))\
+         .select_related("project_m", "user_m")\
+         .order_by("date")
+     months = HourEntry.objects\
+         .filter(user_m=person)\
+         .exclude(incurred_hours=0)\
+         .dates("date","month", order="DESC")
+     weeks = set()
+     current_week = datetime.date.today().isocalendar()[1]
+     for month in months:
+         cal = calendar.Calendar()
+         monthweeks = cal.monthdatescalendar(month.year, month.month)
+         for weekdays in monthweeks:
+            week_number = weekdays[0].isocalendar()[1] #Weekdays contain all seven days of the week, choose the first (Monday)
+            if week_number <= current_week: #Do not add week numbers that are in the future
+                weeks.add((week_number, month.year))
+     weeks_sorted = sorted(weeks, key=lambda tup: (tup[1], tup[0]), reverse=True) #Sort first by year and then by week
+     return render(request, "personweek.html",
+                   {"person": person, "hour_entries": entries, "weeks": weeks_sorted, "week": week, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 @login_required
 def people_list(request):
@@ -327,6 +347,15 @@ def invoice_hours(request, invoice_id):
     }
     return render(request, "invoice_hours.html", context)
 
+@login_required
+def weekly_report_hours(request, weekly_report_id):
+    weekly_report= get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+    entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0).select_related("user_m")
+    context = {
+        "weekly_report": weekly_report,
+        "entries": entries,
+    }
+    return render(request, "weekly_report_hours.html", context)
 
 @login_required
 def projects_list(request):

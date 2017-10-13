@@ -648,6 +648,8 @@ def weekly_report_page(request, weekly_report_id, **_):
         weekly_report.is_approved = comment.checked
         messages.add_message(request, messages.INFO, 'Saved.')
         weekly_report.save()
+        weekly_report.update_state(comment=comment)
+        weekly_report.save()
         return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
 
     try:

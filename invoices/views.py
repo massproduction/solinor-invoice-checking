@@ -668,7 +668,7 @@ def weekly_report_page(request, weekly_report_id, **_):
             week=previous_weekly_report_week)
         context["last_weeks_report"] = last_weeks_report
         context["diff_last_week"] = last_weeks_report.compare(weekly_report)
-    except Invoice.DoesNotExist:
+    except WeeklyReport.DoesNotExist:
         pass
 
     return render(request, "weekly_report_page.html", context)

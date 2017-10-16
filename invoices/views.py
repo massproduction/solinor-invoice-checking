@@ -24,7 +24,7 @@ from django_tables2 import RequestConfig
 from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, \
     InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount, WeeklyReportComments
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
-from invoices.pdf_utils import generate_hours_pdf_for_invoice
+from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
 from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries
 import invoices.date_utils as date_utils
@@ -308,6 +308,8 @@ def queue_update(request):
 def get_pdf(request, invoice_id, pdf_type):
     if pdf_type == "hours":
         pdf, title = generate_hours_pdf_for_invoice(request, invoice_id)
+    elif pdf_type == "weekly":
+        pdf, title = generate_hours_pdf_for_weekly_report(request, invoice_id) #invoice_id is actually weekly_report_id
     else:
         return HttpResponseBadRequest("Invalid PDF type")
 
@@ -664,7 +666,6 @@ def weekly_report_page(request, weekly_report_id, **_):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
     today = datetime.date.today()
-    due_date = today + datetime.timedelta(days=14)
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
     entry_data = calculate_weekly_entry_stats(entries)
@@ -693,7 +694,6 @@ def weekly_report_page(request, weekly_report_id, **_):
 
     context = {
         "today": today,
-        "due_date": due_date,
         "entries": entries,
         "weekly_report": weekly_report,
         "form_data": latest_comments,

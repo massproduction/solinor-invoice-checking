@@ -12,6 +12,7 @@
       <li><a href="{% url 'frontpage' %}">Home</a></li>
       <li><a href="{% url 'projects_list' %}">Projects</a></li>
       <li>{% if weekly_report.project_m %}<a href="{% url 'project' weekly_report.project_m.guid %}">Project</a>{% else %}Project{% endif %}</li>
+      <li class="active"><a href="{% url 'weekly_report' weekly_report.weekly_report_id %}">Weekly report</a></li>
     </ol>
 
     <h2>Weekly report for {{ weekly_report.full_name }} -- {{ weekly_report.date }}</h2>
@@ -20,7 +21,7 @@
         {% if previous_weekly_reports %}
         <div class="dropdown" style="display: inline-block">
           <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-            Open another weekly_report
+            Open another weekly report
             <span class="caret"></span>
           </button>
           <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
@@ -31,6 +32,7 @@
         </div>
         {% endif %}
         <a class="btn btn-info" href="{% url 'get_pdf' weekly_report.weekly_report_id 'weekly' %}" role="button">Download hours</a>
+        <a class="btn btn-info" href="{% url 'weekly_report_hours' weekly_report.weekly_report_id %}" role="button">View hours</a>
       </div>
     </div>
     <div class="row">
@@ -40,6 +42,11 @@
           {% include "snippets/last_week_report.html" %}
         {% endif %}
         {% include "snippets/incorrect_data.html" %}
+      </div>
+      <div class="col-md-4">
+        <div class="well">
+          {% include "snippets/weekly_report_accept.html" %}
+        </div>
       </div>
 
     </div>

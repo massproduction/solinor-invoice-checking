@@ -3,6 +3,7 @@
 import datetime
 import json
 import copy
+import calendar
 from collections import defaultdict
 
 import redis
@@ -20,7 +21,8 @@ from django.db.models.functions import TruncMonth
 
 from django_tables2 import RequestConfig
 
-from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount
+from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, \
+    InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount, WeeklyReportComments
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
 from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
@@ -214,14 +216,33 @@ def person_details_month(request, year, month, user_guid):
     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
-# @login_required
-# def person_details_week(request, year, week, user_guid):
-#     year = int(year)
-#     week = int(week)
-#     person = get_object_or_404(FeetUser, guid=user_guid)
-#     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year, date__week=month).select_related("project_m", "user_m").order_by("date")
-#     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
-#     return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
+@login_required
+def person_details_week(request, year, week, user_guid):
+     year = int(year)
+     week = int(week)
+     week_start = date_utils.week_start_date(year, week)
+     week_end = date_utils.week_end_date(year, week)
+     person = get_object_or_404(FeetUser, guid=user_guid)
+     entries = person.hourentry_set.exclude(incurred_hours=0)\
+         .filter(date__year=year, date__range=(week_start, week_end))\
+         .select_related("project_m", "user_m")\
+         .order_by("date")
+     months = HourEntry.objects\
+         .filter(user_m=person)\
+         .exclude(incurred_hours=0)\
+         .dates("date","month", order="DESC")
+     weeks = set()
+     current_week = datetime.date.today().isocalendar()[1]
+     for month in months:
+         cal = calendar.Calendar()
+         monthweeks = cal.monthdatescalendar(month.year, month.month)
+         for weekdays in monthweeks:
+            week_number = weekdays[0].isocalendar()[1] #Weekdays contain all seven days of the week, choose the first (Monday)
+            if week_number <= current_week: #Do not add week numbers that are in the future
+                weeks.add((week_number, month.year))
+     weeks_sorted = sorted(weeks, key=lambda tup: (tup[1], tup[0]), reverse=True) #Sort first by year and then by week
+     return render(request, "personweek.html",
+                   {"person": person, "hour_entries": entries, "weeks": weeks_sorted, "week": week, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 @login_required
 def people_list(request):
@@ -329,6 +350,15 @@ def invoice_hours(request, invoice_id):
     }
     return render(request, "invoice_hours.html", context)
 
+@login_required
+def weekly_report_hours(request, weekly_report_id):
+    weekly_report= get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+    entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0).select_related("user_m")
+    context = {
+        "weekly_report": weekly_report,
+        "entries": entries,
+    }
+    return render(request, "weekly_report_hours.html", context)
 
 @login_required
 def projects_list(request):
@@ -630,6 +660,7 @@ def invoice_page(request, invoice_id, **_):
 
     return render(request, "invoice_page.html", context)
 
+
 @login_required
 def weekly_report_page(request, weekly_report_id, **_):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
@@ -639,6 +670,24 @@ def weekly_report_page(request, weekly_report_id, **_):
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
     entry_data = calculate_weekly_entry_stats(entries)
+
+    if request.method == "POST":
+        comment = WeeklyReportComments(checked=request.POST.get("weeklyReportChecked", False) in (True, "true", "on"),
+                                       user=request.user.email,
+                                       weekly_report=weekly_report)
+        comment.save()
+        weekly_report.is_approved = comment.checked
+        messages.add_message(request, messages.INFO, 'Saved.')
+        weekly_report.save()
+        weekly_report.update_state(comment=comment)
+        weekly_report.save()
+        return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
+
+    try:
+        latest_comments = WeeklyReportComments.objects.filter(weekly_report=weekly_report).latest()
+    except WeeklyReportComments.DoesNotExist:
+        latest_comments = None
+
     previous_weekly_reports = []
 
     if weekly_report.project_m:
@@ -649,6 +698,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         "due_date": due_date,
         "entries": entries,
         "weekly_report": weekly_report,
+        "form_data": latest_comments,
         "previous_weekly_reports": previous_weekly_reports,
     }
 
@@ -657,7 +707,10 @@ def weekly_report_page(request, weekly_report_id, **_):
     previous_weekly_report_week = weekly_report.week - 1
     previous_weekly_report_year = weekly_report.year
     if previous_weekly_report_week == 0:
-        previous_weekly_report_week = 51
+        if date_utils.weeks_in_a_year(previous_weekly_report_year-1) == 53:
+            previous_weekly_report_week = 53
+        else:
+            previous_weekly_report_week = 52
         previous_weekly_report_year -= 1
     try:
         last_weeks_report = WeeklyReport.objects.get(
@@ -667,7 +720,7 @@ def weekly_report_page(request, weekly_report_id, **_):
             week=previous_weekly_report_week)
         context["last_weeks_report"] = last_weeks_report
         context["diff_last_week"] = last_weeks_report.compare(weekly_report)
-    except Invoice.DoesNotExist:
+    except WeeklyReport.DoesNotExist:
         pass
 
     return render(request, "weekly_report_page.html", context)

@@ -390,8 +390,11 @@ def project_details(request, project_id):
     table = ProjectDetailsTable(filters.qs)
 
     if request.method == "POST":
-        project.enable_weekly_notifications = request.POST.get("weeklyReportEnableNotifications", False) in (True, "true", "on")
+        enable_notifications = request.POST.get("weeklyReportEnableNotifications", False) in (True, "true", "on")
+        project.enable_weekly_notifications = enable_notifications
         project.save()
+        messages.add_message(request, messages.INFO, 'Slack notifications enabled.' if enable_notifications else 'Slack notifications disabled.')
+        return HttpResponseRedirect(reverse("project", args=[project_id]))
 
     RequestConfig(request, paginate={
         'per_page': 250

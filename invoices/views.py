@@ -666,7 +666,6 @@ def weekly_report_page(request, weekly_report_id, **_):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
     today = datetime.date.today()
-    due_date = today + datetime.timedelta(days=14)
 
     entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
     entry_data = calculate_weekly_entry_stats(entries)
@@ -695,7 +694,6 @@ def weekly_report_page(request, weekly_report_id, **_):
 
     context = {
         "today": today,
-        "due_date": due_date,
         "entries": entries,
         "weekly_report": weekly_report,
         "form_data": latest_comments,

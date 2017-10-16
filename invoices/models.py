@@ -76,6 +76,7 @@ class HourEntry(models.Model):
         ordering = ("date", "user_id")
         verbose_name_plural = "Hour entries"
 
+
 class Invoice(models.Model):
     INVOICE_STATE_CHOICES = (
         ("C", "Created"),
@@ -355,7 +356,6 @@ class Project(models.Model):
     def __str__(self):
         return u"%s - %s" % (self.client, self.name)
 
-
     class Meta:
         ordering = ("client", "name")
 
@@ -449,7 +449,6 @@ class ProjectFixedEntry(models.Model):
 
     def __str__(self):
         return u"%s - %s - %s" % (self.project, self.description, self.price)
-
 
 
 class AmazonLinkedAccount(models.Model):

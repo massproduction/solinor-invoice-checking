@@ -23,16 +23,19 @@ STATS_FIELDS = [
     "empty_descriptions_count",
 ]
 
+
 def parse_date(date):
     if date:
         date = date.split("-")
         return datetime.datetime(int(date[0]), int(date[1]), int(date[2])).date()
+
 
 def parse_float(data):
     try:
         return float(data)
     except TypeError:
         return 0
+
 
 def parse_datetime(date):
     if date is None:
@@ -130,6 +133,7 @@ def update_projects():
                 report.save()
                 break
 
+
 def get_projects():
     projects_data = {}
     for project in Project.objects.all():
@@ -144,6 +148,7 @@ def get_invoices():
         invoices_data[invoice_key] = invoice
     return invoices_data
 
+
 def get_weekly_reports():
     weekly_report_data = {}
     for weekly_report in WeeklyReport.objects.all():
@@ -151,11 +156,13 @@ def get_weekly_reports():
         weekly_report_data[weekly_report_key] = weekly_report
     return weekly_report_data
 
+
 def get_users():
     users = {}
     for user in FeetUser.objects.all():
         users[user.email] = user
     return users
+
 
 class HourEntryUpdate(object):
     def __init__(self, start_date, end_date):
@@ -197,7 +204,7 @@ class HourEntryUpdate(object):
             return invoice
 
     def match_weekly_report(self, data):
-        week_number = data["date"].isocalendar()[1] # week number, 1-53
+        week_number = data["date"].isocalendar()[1]  # week number, 1-53
         weekly_report_key = u"%s-%s %s - %s" % (data["date"].year, week_number, data["client"], data["project"])
         weekly_report = self.weekly_report_data.get(weekly_report_key)
         if weekly_report is not None:

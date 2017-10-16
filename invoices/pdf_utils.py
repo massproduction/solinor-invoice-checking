@@ -27,7 +27,7 @@ def generate_pdf(title, content):
                               False,
                               options=wk_options,
                               configuration=pdfkit_config,
-                             )
+                              )
 
 
 def generate_hours_pdf_for_invoice(request, invoice):

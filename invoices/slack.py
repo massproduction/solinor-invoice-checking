@@ -2,13 +2,14 @@ import logging
 import datetime
 
 import slacker
-from invoices.models import FeetUser, SlackChannel, Project, SlackChat, SlackChatMember
+from invoices.models import FeetUser, SlackChannel, Project, SlackChat, SlackChatMember, WeeklyReport
 from django.conf import settings
 from django.db.models import Count, Sum
 from django.core.urlresolvers import reverse
 
 slack = slacker.Slacker(settings.SLACK_BOT_ACCESS_TOKEN)
 logger = logging.getLogger(__name__)
+
 
 def create_slack_mpim(members_list):
     slack_chat = SlackChat.objects.annotate(users_count=Count("slackchatmember")).filter(users_count=len(members_list))
@@ -31,6 +32,7 @@ def create_slack_mpim(members_list):
         slack_chat = slack_chat[0]
         chat_id = slack_chat.chat_id
     return chat_id
+
 
 def send_unsubmitted_hours_notifications():
     today = datetime.date.today()
@@ -73,6 +75,7 @@ def send_unapproved_hours_notifications(year, month):
         logger.info(u"%s %s", message, chat_id)
         slack.chat.post_message(chat_id, message)
 
+
 def refresh_slack_users():
     slack_users = slack.users.list().body["members"]
     for member in slack_users:
@@ -84,16 +87,35 @@ def refresh_slack_users():
 
 def refresh_slack_channels():
     slack_channels = slack.channels.list().body["channels"]
+    private_channels = slack.groups.list().body["groups"]
     for channel in slack_channels:
-        channel_id = channel.get("id")
-        channel_name = channel.get("name")
-        if channel.get("is_archived"):
-            continue
+        refresh_slack_channels_helper(channel)
+    for private_channel in private_channels:
+        refresh_slack_channels_helper(private_channel)
+
+
+def refresh_slack_channels_helper(channel):
+    channel_id = channel.get("id")
+    channel_name = channel.get("name")
+    if not channel.get("is_archived"):
         SlackChannel.objects.update_or_create(channel_id=channel_id, defaults={
             "name": channel_name,
         })
+
 
 def send_slack_notification(project):
     message = """<!channel> Hi! New project was added: <https://app.10000ft.com/viewproject?id=%s|%s - %s> (created at %s)""" % (project.project_id, project.client, project.name, project.created_at)
     for channel in SlackChannel.objects.filter(new_project_notification=True):
         slack.chat.post_message(channel.channel_id, message)
+
+
+def send_unchecked_weekly_report_notification(year, week):
+
+    for weekly_report in WeeklyReport.objects.all().filter(project_m__enable_weekly_notifications=True, year=year, week=week-1):
+        message = """You have an unapproved weekly report at <https://solinor-finance.herokuapp.com/weekly_report/%s|Solinor Finance service>.""" % weekly_report.weekly_report_id
+        if weekly_report.project_m.slack_channel:
+            channel = weekly_report.project_m.slack_channel
+            if weekly_report.weekly_report_state == "C":
+                slack.chat.post_message(channel, message)
+        else:
+            logger.info("Could not get channel for project %s", weekly_report.project)

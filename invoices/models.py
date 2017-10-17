@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import uuid
 import time
+import ast
 from django.db import models
 import invoices.date_utils as date_utils
 
@@ -204,6 +205,7 @@ class WeeklyReport(models.Model):
     client = models.CharField(max_length=100)
     project = models.CharField(max_length=100)
     tags = models.CharField(max_length=1024, null=True, blank=True)
+    summary_items = models.TextField(null=True, blank=True)
 
     is_approved = models.BooleanField(blank=True, default=False)
     has_comments = models.BooleanField(blank=True, default=False)
@@ -221,6 +223,7 @@ class WeeklyReport(models.Model):
     incurred_money = models.FloatField(default=0, verbose_name="Incurred money")
     weekly_report_state = models.CharField(max_length=1, choices=WEEKLY_REPORT_STATE_CHOIOCES, default='C')
 
+
     @property
     def week_start_date(self):
         return date_utils.week_start_date(self.year, self.week)
@@ -233,6 +236,12 @@ class WeeklyReport(models.Model):
     def processed_tags(self):
         if self.tags:
             return self.tags.split(",")
+        return []
+
+    @property
+    def processed_summary_items(self):
+        if self.summary_items:
+            return ast.literal_eval(self.summary_items)
         return []
 
     @property

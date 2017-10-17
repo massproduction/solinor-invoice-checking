@@ -356,3 +356,10 @@ def refresh_weekly_stats(start_date, end_date):
             weekly_report.bill_rate_avg = 0
         weekly_report.save()
         logger.debug("Updated statistics for %s", weekly_report)
+
+
+def latest_or_none(model, **kwargs):
+    try:
+        return model.objects.filter(**kwargs).latest()
+    except model.DoesNotExist:
+        return None

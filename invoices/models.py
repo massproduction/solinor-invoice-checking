@@ -206,7 +206,6 @@ class WeeklyReport(models.Model):
     tags = models.CharField(max_length=1024, null=True, blank=True)
 
     is_approved = models.BooleanField(blank=True, default=False)
-    has_comments = models.BooleanField(blank=True, default=False)
     incorrect_entries_count = models.IntegerField(default=0)
     billable_incorrect_price_count = models.IntegerField(default=0)
     non_billable_hours_count = models.IntegerField(default=0)
@@ -372,8 +371,16 @@ class Phase(models.Model):
 
 
 class WeeklyReportComments(models.Model):
+    WEEKLY_REPORT_COMMENT_TYPES = (
+        ("CS", "Change of scope"),
+        ("CU", "Custom page"),
+        ("S", "Summary"),
+        ("A", "Approval")
+    )
     weekly_report = models.ForeignKey("WeeklyReport")
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=2, choices=WEEKLY_REPORT_COMMENT_TYPES, default="A")
+    text = models.TextField(max_length=1000, null=True)
     checked = models.BooleanField(blank=True, default=False)
     user = models.TextField(max_length=100)
 

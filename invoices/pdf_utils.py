@@ -6,6 +6,7 @@ from django.template.loader import render_to_string
 
 from invoices.models import Invoice, HourEntry, WeeklyReport
 
+
 def generate_pdf(title, content):
     pdfkit_config = pdfkit.configuration(wkhtmltopdf=settings.WKHTMLTOPDF_CMD)
     wk_options = {
@@ -27,7 +28,7 @@ def generate_pdf(title, content):
                               False,
                               options=wk_options,
                               configuration=pdfkit_config,
-                             )
+                              )
 
 
 def generate_hours_pdf_for_invoice(request, invoice):
@@ -65,7 +66,10 @@ def generate_hours_pdf_for_weekly_report(request, weekly_report):
         if entry.phase_name not in phases:
             phases[entry.phase_name] = []
         phases[entry.phase_name].append(entry)
-    context = {"phases": phases}
+    context = {
+        "phases": phases,
+        "STATIC_ROOT": settings.STATIC_ROOT
+    }
 
     # We can generate the pdf from a url, file or, as shown here, a string
     content = render_to_string('pdf_template.html', context=context, request=request)

@@ -2,18 +2,20 @@
   {% csrf_token %}
   <h3>Summary page for pdf</h3>
     <div class="form-group">
-      {% if weekly_report.processed_summary_items %}<label>Current values</label>{% endif %}
-      {% for summary_item in weekly_report.processed_summary_items %}
-        <input type="text" class="form-control" id="oldValues {{ forloop.counter }}" value="{{ summary_item }}" name="oldValues{{ forloop.counter }}"><br>
-      {% endfor %}
+      {% if weekly_report.summary %}
+        <label>Current values</label>
+        <textarea class="form-control" id="oldValue" name="oldValue">{{weekly_report.summary}}</textarea>
+      {% endif %}
     </div>
   <div class="form-group">
-    <label for="newValue">New line</label>
-    <input type="text" class="form-control" id="newValue" name="newValue" placeholder="New line" />
+    <label for="newValue">Add summary (line breaks will be new list items)</label>
+    <textarea rows="3" class="form-control" id="newValue" name="newValue"></textarea>
   </div>
   <button type="submit" class="btn btn-primary">Save</button>
   {% if form_data %}
     <p>Last submitted by {{ form_data.user }} at {{ form_data.timestamp }}</p>
+  {% else %}
+    <p></p>
   {% endif %}
 </form>
 

@@ -205,8 +205,8 @@ class WeeklyReport(models.Model):
     client = models.CharField(max_length=100)
     project = models.CharField(max_length=100)
     tags = models.CharField(max_length=1024, null=True, blank=True)
-    summary_items = models.TextField(null=True, blank=True)
 
+    summary = models.CharField(max_length=1024, blank=True, null=True)
     is_approved = models.BooleanField(blank=True, default=False)
     has_comments = models.BooleanField(blank=True, default=False)
     incorrect_entries_count = models.IntegerField(default=0)
@@ -236,12 +236,6 @@ class WeeklyReport(models.Model):
     def processed_tags(self):
         if self.tags:
             return self.tags.split(",")
-        return []
-
-    @property
-    def processed_summary_items(self):
-        if self.summary_items:
-            return ast.literal_eval(self.summary_items)
         return []
 
     @property

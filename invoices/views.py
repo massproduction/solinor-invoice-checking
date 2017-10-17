@@ -26,7 +26,7 @@ from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpda
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
 from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
-from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries
+from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries, compare_invoices
 import invoices.date_utils as date_utils
 from invoices.chart_utils import gen_treemap_data_projects, gen_treemap_data_users
 
@@ -218,7 +218,7 @@ def person_details_month(request, year, month, user_guid):
     person = get_object_or_404(FeetUser, guid=user_guid)
     entries = person.hourentry_set.exclude(incurred_hours=0).filter(date__year=year, date__month=month).select_related("project_m", "user_m").order_by("date")
     months = HourEntry.objects.filter(user_m=person).exclude(incurred_hours=0).dates("date", "month", order="DESC")
-    return render(request, "person.html", {"person": person, "hour_entries": entries, "months": months, "month": month, "year": year, "stats": calculate_entry_stats(entries, [])})
+    return render(request, "person.html", {"month_or_week": "month", "person": person, "hour_entries": entries, "months": months, "report_number": month, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 
 @login_required
@@ -240,7 +240,7 @@ def person_details_week(request, year, week, user_guid):
             if week_number <= current_week:  # Do not add week numbers that are in the future
                 weeks.add((week_number, month.year))
     weeks_sorted = sorted(weeks, key=lambda tup: (tup[1], tup[0]), reverse=True)  # Sort first by year and then by week
-    return render(request, "personweek.html", {"person": person, "hour_entries": entries, "weeks": weeks_sorted, "week": week, "year": year, "stats": calculate_entry_stats(entries, [])})
+    return render(request, "person.html", {"month_or_week": "week", "person": person, "hour_entries": entries, "weeks": weeks_sorted, "report_number": week, "year": year, "stats": calculate_entry_stats(entries, [])})
 
 
 @login_required
@@ -642,8 +642,9 @@ def invoice_page(request, invoice_id, **_):
     recent_weekly_report = None
     if invoice.project_m:
         previous_invoices = Invoice.objects.filter(project_m=invoice.project_m)
-        weekly_reports = WeeklyReport.objects.filter(project_m=invoice.project_m, client=invoice.client)
-        recent_weekly_report = weekly_reports[0]
+        weekly_reports = WeeklyReport.objects.filter(project_m=invoice.project_m)
+        if weekly_reports:
+            recent_weekly_report = weekly_reports[0]
 
     context = {
         "today": today,
@@ -666,7 +667,7 @@ def invoice_page(request, invoice_id, **_):
     try:
         last_month_invoice = Invoice.objects.get(project=invoice.project, client=invoice.client, year=previous_invoice_year, month=previous_invoice_month)
         context["last_month_invoice"] = last_month_invoice
-        context["diff_last_month"] = last_month_invoice.compare(invoice)
+        context["diff_last_month"] = compare_invoices(last_month_invoice, invoice)
     except Invoice.DoesNotExist:
         pass
 
@@ -729,7 +730,7 @@ def weekly_report_page(request, weekly_report_id, **_):
             year=previous_weekly_report_year,
             week=previous_weekly_report_week)
         context["last_weeks_report"] = last_weeks_report
-        context["diff_last_week"] = last_weeks_report.compare(weekly_report)
+        context["diff_last_week"] = compare_invoices(last_weeks_report, weekly_report)
     except WeeklyReport.DoesNotExist:
         pass
 

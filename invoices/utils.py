@@ -295,6 +295,28 @@ class HourEntryUpdate(object):
         return (self.first_entry, self.last_entry)
 
 
+def refresh_report(report, stats):
+    for field in STATS_FIELDS:
+        setattr(report, field, stats[field])
+
+    report.incurred_money = sum(
+        [row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
+    report.incurred_hours = sum(
+        [row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
+    report.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
+    if report.incurred_hours > 0:
+        report.billable_percentage = report.incurred_billable_hours / report.incurred_hours
+    else:
+        report.billable_percentage = 0
+    if stats["total_rows"]["hours"]["incurred_hours"] > 0:
+        report.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"][
+            "incurred_hours"]
+    else:
+        report.bill_rate_avg = 0
+    report.save()
+    logger.debug("Updated statistics for %s", report)
+
+
 def refresh_stats(start_date, end_date):
     if start_date and end_date:
         invoices = Invoice.objects.filter(year__gte=start_date.year, year__lte=end_date.year, month__gte=start_date.month, month__lte=end_date.month)  # TODO: this is not working properly over new year.
@@ -309,35 +331,14 @@ def refresh_stats(start_date, end_date):
             aws_accounts = invoice.project_m.amazon_account.all()
             aws_entries = get_aws_entries(aws_accounts, invoice.month_start_date, invoice.month_end_date)
         stats = calculate_entry_stats(entries, invoice.get_fixed_invoice_rows(), aws_entries)
-        for field in STATS_FIELDS:
-            setattr(invoice, field, stats[field])
 
-        invoice.incurred_money = sum([row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
-        invoice.incurred_hours = sum([row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
-        invoice.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
-        if invoice.incurred_hours > 0:
-            invoice.billable_percentage = invoice.incurred_billable_hours / invoice.incurred_hours
-        else:
-            invoice.billable_percentage = 0
-        if stats["total_rows"]["hours"]["incurred_hours"] > 0:
-            invoice.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"]["incurred_hours"]
-        else:
-            invoice.bill_rate_avg = 0
-        invoice.save()
-        logger.debug("Updated statistics for %s", invoice)
+        refresh_report(invoice, stats)
 
 
 def refresh_weekly_stats(start_date, end_date):
     if start_date and end_date:
-        weekly_reports = WeeklyReport.objects.filter(
-            year__gte=start_date.year,
-            year__lte=end_date.year,
-            week__gte=start_date.isocalendar()[1],
-            week__lte=end_date.isocalendar()[1])
-        logger.info("Updating statistics for weekly reports between %s and %s: %s invoices",
-                    start_date,
-                    end_date,
-                    weekly_reports.count())
+        weekly_reports = WeeklyReport.objects.filter(year__gte=start_date.year, year__lte=end_date.year, week__gte=start_date.isocalendar()[1], week__lte=end_date.isocalendar()[1])
+        logger.info("Updating statistics for weekly reports between %s and %s: %s invoices", start_date, end_date, weekly_reports.count())
     else:
         logger.info("Updating statistics for all weekly reports")
         weekly_reports = WeeklyReport.objects.all()
@@ -345,21 +346,5 @@ def refresh_weekly_stats(start_date, end_date):
         entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
         aws_entries = None
         stats = calculate_weekly_entry_stats(entries, aws_entries)
-        for field in STATS_FIELDS:
-            setattr(weekly_report, field, stats[field])
 
-        weekly_report.incurred_money = sum(
-            [row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
-        weekly_report.incurred_hours = sum(
-            [row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
-        weekly_report.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
-        if weekly_report.incurred_hours > 0:
-            weekly_report.billable_percentage = weekly_report.incurred_billable_hours / weekly_report.incurred_hours
-        else:
-            weekly_report.billable_percentage = 0
-        if stats["total_rows"]["hours"]["incurred_hours"] > 0:
-            weekly_report.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"]["incurred_hours"]
-        else:
-            weekly_report.bill_rate_avg = 0
-        weekly_report.save()
-        logger.debug("Updated statistics for %s", weekly_report)
+        refresh_report(weekly_report, stats)

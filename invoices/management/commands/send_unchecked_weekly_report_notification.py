@@ -5,7 +5,7 @@ from invoices.slack import send_unchecked_weekly_report_notification
 
 
 class Command(BaseCommand):
-    help = 'Send notifications for hours that were not submitted'
+    help = 'Send notifications for unchecked weekly reports'
 
     def handle(self, *args, **options):
         today = datetime.date.today()

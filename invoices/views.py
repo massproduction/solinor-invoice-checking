@@ -736,14 +736,9 @@ def weekly_report_page(request, weekly_report_id, **_):
 def weekly_report_summary(request, weekly_report_id):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
-    summary_items = weekly_report.processed_summary_items
     if request.POST.get("newValue"):
-        summary_items.append(request.POST.get("newValue"))
+        weekly_report.summary = request.POST.get("newValue")
 
-    for i in range(len(request.POST)-2):
-        summary_items[i] = request.POST.get("oldValues"+str(i+1))
-
-    weekly_report.summary_items = json.dumps(summary_items)
     weekly_report.save()
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
@@ -753,7 +748,7 @@ def weekly_report_summary(request, weekly_report_id):
 def delete_weekly_report_summary(request, weekly_report_id):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
-    weekly_report.summary_items = None
+    weekly_report.summary = None
     weekly_report.save()
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))

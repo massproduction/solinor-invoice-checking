@@ -1,0 +1,23 @@
+<form method="post" action="{% url 'weekly_report_summary' weekly_report.weekly_report_id %}">
+  {% csrf_token %}
+  <h3>Summary page for pdf</h3>
+    <div class="form-group">
+      {% if weekly_report.processed_summary_items %}<label>Current values</label>{% endif %}
+      {% for summary_item in weekly_report.processed_summary_items %}
+        <input type="text" class="form-control" id="oldValues {{ forloop.counter }}" value="{{ summary_item }}" name="oldValues{{ forloop.counter }}"><br>
+      {% endfor %}
+    </div>
+  <div class="form-group">
+    <label for="newValue">New line</label>
+    <input type="text" class="form-control" id="newValue" name="newValue" placeholder="New line" />
+  </div>
+  <button type="submit" class="btn btn-primary">Save</button>
+  {% if form_data %}
+    <p>Last submitted by {{ form_data.user }} at {{ form_data.timestamp }}</p>
+  {% endif %}
+</form>
+
+<form method="post" action="{% url 'delete_weekly_report_summary' weekly_report.weekly_report_id %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-primary">Delete</button>
+</form>

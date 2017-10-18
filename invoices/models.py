@@ -181,7 +181,6 @@ class WeeklyReport(models.Model):
 
     tags = models.CharField(max_length=1024, null=True, blank=True)
 
-    summary = models.CharField(max_length=1024, blank=True, null=True)
     is_approved = models.BooleanField(blank=True, default=False)
     has_comments = models.BooleanField(blank=True, default=False)
     incorrect_entries_count = models.IntegerField(default=0)

@@ -2,15 +2,8 @@
   {% csrf_token %}
   <h3>Summary page for pdf</h3>
     <div class="form-group">
-      {% if weekly_report.summary %}
-        <label>Current values</label>
-        <textarea class="form-control" id="oldValue" name="oldValue">{{weekly_report.summary}}</textarea>
-      {% endif %}
+        <textarea class="form-control" id="wr-summary" name="wr-summary" rows="4">{{latest_summary.text}}</textarea>
     </div>
-  <div class="form-group">
-    <label for="newValue">Add summary (line breaks will be new list items)</label>
-    <textarea rows="3" class="form-control" id="newValue" name="newValue"></textarea>
-  </div>
   <button type="submit" class="btn btn-primary">Save</button>
   {% if form_data %}
     <p>Last submitted by {{ form_data.user }} at {{ form_data.timestamp }}</p>
@@ -19,7 +12,9 @@
   {% endif %}
 </form>
 
-<form method="post" action="{% url 'delete_weekly_report_summary' weekly_report.weekly_report_id %}">
-  {% csrf_token %}
-  <button type="submit" class="btn btn-primary">Delete</button>
-</form>
+{% if latest_summary %}
+  <form method="post" action="{% url 'delete_weekly_report_summary' weekly_report.weekly_report_id latest_summary.id %}">
+    {% csrf_token %}
+    <button type="submit" class="btn btn-primary">Delete</button>
+  </form>
+{% endif %}

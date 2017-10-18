@@ -694,6 +694,10 @@ def weekly_report_page(request, weekly_report_id, **_):
     latest_approval = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="A")
     latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="CS")
 
+    if latest_change_of_scope is None:
+        project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
+        latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report__in=project_previous_weekly_reports, type="CS")
+
     previous_weekly_reports = []
 
     if weekly_report.project_m:

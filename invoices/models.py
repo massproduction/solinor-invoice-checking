@@ -2,6 +2,7 @@ from __future__ import unicode_literals
 
 import uuid
 import time
+import ast
 from django.db import models
 import invoices.date_utils as date_utils
 
@@ -196,6 +197,7 @@ class WeeklyReport(models.Model):
     incurred_money = models.FloatField(default=0, verbose_name="Incurred money")
     weekly_report_state = models.CharField(max_length=1, choices=WEEKLY_REPORT_STATE_CHOIOCES, default='C')
 
+
     @property
     def week_start_date(self):
         return date_utils.week_start_date(self.year, self.week)
@@ -322,10 +324,19 @@ class Phase(models.Model):
 
 
 class WeeklyReportComments(models.Model):
+    WEEKLY_REPORT_COMMENT_TYPES = (
+        ("CS", "Change of scope"),
+        ("CU", "Custom page"),
+        ("S", "Summary"),
+        ("A", "Approval")
+    )
     weekly_report = models.ForeignKey("WeeklyReport")
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=2, choices=WEEKLY_REPORT_COMMENT_TYPES, default="A")
+    text = models.TextField(max_length=1000, null=True)
     checked = models.BooleanField(blank=True, default=False)
     user = models.TextField(max_length=100)
+    header = models.CharField(max_length=100, null=True)
 
     class Meta:
         get_latest_by = "timestamp"

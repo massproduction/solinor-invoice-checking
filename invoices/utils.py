@@ -23,16 +23,19 @@ STATS_FIELDS = [
     "empty_descriptions_count",
 ]
 
+
 def parse_date(date):
     if date:
         date = date.split("-")
         return datetime.datetime(int(date[0]), int(date[1]), int(date[2])).date()
+
 
 def parse_float(data):
     try:
         return float(data)
     except TypeError:
         return 0
+
 
 def parse_datetime(date):
     if date is None:
@@ -122,13 +125,6 @@ def update_projects():
                 invoice.save()
                 break
 
-    for report in WeeklyReport.objects.filter(project_m=None):
-        for project in projects:
-            if project.name == report.project and project.client == report.client:
-                logger.info("Updating weekly report %s with project %s", report, project)
-                report.project_m = project
-                report.save()
-                break
 
 def get_projects():
     projects_data = {}
@@ -144,18 +140,21 @@ def get_invoices():
         invoices_data[invoice_key] = invoice
     return invoices_data
 
+
 def get_weekly_reports():
     weekly_report_data = {}
     for weekly_report in WeeklyReport.objects.all():
-        weekly_report_key = u"%s-%s %s - %s" % (weekly_report.year, weekly_report.week, weekly_report.client, weekly_report.project)
+        weekly_report_key = u"%s-%s %s - %s" % (weekly_report.year, weekly_report.week, weekly_report.project_m.client, weekly_report.project_m.project)
         weekly_report_data[weekly_report_key] = weekly_report
     return weekly_report_data
+
 
 def get_users():
     users = {}
     for user in FeetUser.objects.all():
         users[user.email] = user
     return users
+
 
 class HourEntryUpdate(object):
     def __init__(self, start_date, end_date):
@@ -187,20 +186,16 @@ class HourEntryUpdate(object):
             return invoice
         else:
             logger.info("Creating a new invoice: %s", invoice_key)
-            invoice, _ = Invoice.objects.update_or_create(
-                year=data["date"].year,
-                month=data["date"].month,
-                client=data["client"],
-                project=data["project"],
-                defaults={"tags": data["project_tags"]})
+            invoice = Invoice(year=data["date"].year, month=data["date"].month, client=data["client"], project=data["project"], tags=data["project_tags"])
+            invoice.save()
             self.invoices_data[invoice_key] = invoice
             return invoice
 
     def match_weekly_report(self, data):
-        week_number = data["date"].isocalendar()[1] # week number, 1-53
+        week_number = data["date"].isocalendar()[1]  # week number, 1-53
         weekly_report_key = u"%s-%s %s - %s" % (data["date"].year, week_number, data["client"], data["project"])
         weekly_report = self.weekly_report_data.get(weekly_report_key)
-        if weekly_report is not None:
+        if weekly_report:
             logger.debug("Weekly report already exists: %s", weekly_report_key)
             if weekly_report.tags != data["project_tags"]:
                 weekly_report.tags = data["project_tags"]
@@ -208,12 +203,13 @@ class HourEntryUpdate(object):
             return weekly_report
         else:
             logger.info("Creating a new weekly report %s", weekly_report_key)
-            weekly_report, _ = WeeklyReport.objects.update_or_create(
-                year=data["date"].year,
-                week=week_number,
-                client=data["client"],
-                project=data["project"],
-                defaults={"tags": data["project_tags"]})
+            projects = Project.objects.filter(name=data["project"], client=data["client"])
+            if not projects:
+                logger.error("No project %s with client %s found, cannot create weekly report", data["project"], data["client"])
+                return
+            project = projects[0]
+            weekly_report = WeeklyReport(year=data["date"].year, week=week_number, project_m=project, tags=data["project_tags"])
+            weekly_report.save()
             self.weekly_report_data[weekly_report_key] = weekly_report
             return weekly_report
 
@@ -288,6 +284,28 @@ class HourEntryUpdate(object):
         return (self.first_entry, self.last_entry)
 
 
+def refresh_report(report, stats):
+    for field in STATS_FIELDS:
+        setattr(report, field, stats[field])
+
+    report.incurred_money = sum(
+        [row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
+    report.incurred_hours = sum(
+        [row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
+    report.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
+    if report.incurred_hours > 0:
+        report.billable_percentage = report.incurred_billable_hours / report.incurred_hours
+    else:
+        report.billable_percentage = 0
+    if stats["total_rows"]["hours"]["incurred_hours"] > 0:
+        report.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"][
+            "incurred_hours"]
+    else:
+        report.bill_rate_avg = 0
+    report.save()
+    logger.debug("Updated statistics for %s", report)
+
+
 def refresh_stats(start_date, end_date):
     if start_date and end_date:
         invoices = Invoice.objects.filter(year__gte=start_date.year, year__lte=end_date.year, month__gte=start_date.month, month__lte=end_date.month)  # TODO: this is not working properly over new year.
@@ -302,35 +320,14 @@ def refresh_stats(start_date, end_date):
             aws_accounts = invoice.project_m.amazon_account.all()
             aws_entries = get_aws_entries(aws_accounts, invoice.month_start_date, invoice.month_end_date)
         stats = calculate_entry_stats(entries, invoice.get_fixed_invoice_rows(), aws_entries)
-        for field in STATS_FIELDS:
-            setattr(invoice, field, stats[field])
 
-        invoice.incurred_money = sum([row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
-        invoice.incurred_hours = sum([row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
-        invoice.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
-        if invoice.incurred_hours > 0:
-            invoice.billable_percentage = invoice.incurred_billable_hours / invoice.incurred_hours
-        else:
-            invoice.billable_percentage = 0
-        if stats["total_rows"]["hours"]["incurred_hours"] > 0:
-            invoice.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"]["incurred_hours"]
-        else:
-            invoice.bill_rate_avg = 0
-        invoice.save()
-        logger.debug("Updated statistics for %s", invoice)
+        refresh_report(invoice, stats)
 
 
 def refresh_weekly_stats(start_date, end_date):
     if start_date and end_date:
-        weekly_reports = WeeklyReport.objects.filter(
-            year__gte=start_date.year,
-            year__lte=end_date.year,
-            week__gte=start_date.isocalendar()[1],
-            week__lte=end_date.isocalendar()[1])
-        logger.info("Updating statistics for weekly reports between %s and %s: %s invoices",
-                    start_date,
-                    end_date,
-                    weekly_reports.count())
+        weekly_reports = WeeklyReport.objects.filter(year__gte=start_date.year, year__lte=end_date.year, week__gte=start_date.isocalendar()[1], week__lte=end_date.isocalendar()[1])
+        logger.info("Updating statistics for weekly reports between %s and %s: %s invoices", start_date, end_date, weekly_reports.count())
     else:
         logger.info("Updating statistics for all weekly reports")
         weekly_reports = WeeklyReport.objects.all()
@@ -338,24 +335,8 @@ def refresh_weekly_stats(start_date, end_date):
         entries = HourEntry.objects.filter(weekly_report=weekly_report).filter(incurred_hours__gt=0)
         aws_entries = None
         stats = calculate_weekly_entry_stats(entries, aws_entries)
-        for field in STATS_FIELDS:
-            setattr(weekly_report, field, stats[field])
 
-        weekly_report.incurred_money = sum(
-            [row["incurred_money"] for row in stats["total_rows"].values() if "incurred_money" in row])
-        weekly_report.incurred_hours = sum(
-            [row["incurred_hours"] for row in stats["total_rows"].values() if "incurred_hours" in row])
-        weekly_report.incurred_billable_hours = stats["total_rows"]["hours"]["incurred_billable_hours"]
-        if weekly_report.incurred_hours > 0:
-            weekly_report.billable_percentage = weekly_report.incurred_billable_hours / weekly_report.incurred_hours
-        else:
-            weekly_report.billable_percentage = 0
-        if stats["total_rows"]["hours"]["incurred_hours"] > 0:
-            weekly_report.bill_rate_avg = stats["total_rows"]["hours"]["incurred_money"] / stats["total_rows"]["hours"]["incurred_hours"]
-        else:
-            weekly_report.bill_rate_avg = 0
-        weekly_report.save()
-        logger.debug("Updated statistics for %s", weekly_report)
+        refresh_report(weekly_report, stats)
 
 
 def latest_or_none(model, **kwargs):

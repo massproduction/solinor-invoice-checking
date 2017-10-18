@@ -77,6 +77,7 @@ class HourEntry(models.Model):
         ordering = ("date", "user_id")
         verbose_name_plural = "Hour entries"
 
+
 class Invoice(models.Model):
     INVOICE_STATE_CHOICES = (
         ("C", "Created"),
@@ -154,30 +155,6 @@ class Invoice(models.Model):
         if self.tags:
             return self.tags.split(",")
 
-    def compare(self, other):
-        def calc_stats(field_name):
-            field_value = getattr(self, field_name)
-            other_field_value = getattr(other, field_name)
-            diff = (other_field_value or 0) - (field_value or 0)
-            if not field_value:
-                percentage = None
-            else:
-                percentage = diff / field_value * 100
-            return {"diff": diff, "percentage": percentage, "this_value": field_value, "other_value": other_field_value}
-
-        data = {
-            "hours": calc_stats("incurred_hours"),
-            "bill_rate_avg": calc_stats("bill_rate_avg"),
-            "money": calc_stats("incurred_money"),
-        }
-        if abs(data["hours"]["diff"]) > 10 and (not data["hours"]["percentage"] or abs(data["hours"]["percentage"]) > 25):
-            data["remarkable"] = True
-        if abs(data["bill_rate_avg"]["diff"]) > 5 and data["bill_rate_avg"]["this_value"] > 0 and data["bill_rate_avg"]["other_value"] > 0:
-            data["remarkable"] = True
-        if abs(data["money"]["diff"]) > 2000 and (not data["money"]["percentage"] or abs(data["money"]["percentage"]) > 25):
-            data["remarkable"] = True
-        return data
-
     def get_fixed_invoice_rows(self):
         fixed_invoice_rows = list(InvoiceFixedEntry.objects.filter(invoice=self))
         if self.invoice_state not in ("P", "S") and self.project_m:
@@ -202,8 +179,6 @@ class WeeklyReport(models.Model):
 
     project_m = models.ForeignKey("Project", null=True)
 
-    client = models.CharField(max_length=100)
-    project = models.CharField(max_length=100)
     tags = models.CharField(max_length=1024, null=True, blank=True)
 
     summary = models.CharField(max_length=1024, blank=True, null=True)
@@ -244,7 +219,7 @@ class WeeklyReport(models.Model):
 
     @property
     def full_name(self):
-        return "%s - %s" % (self.client, self.project)
+        return "%s - %s" % (self.project_m.client, self.project_m.name)
 
     def __unicode__(self):
         return u"%s - %s" % (self.full_name, self.date)
@@ -262,33 +237,9 @@ class WeeklyReport(models.Model):
         if self.tags:
             return self.tags.split(",")
 
-    def compare(self, other):
-        def calc_stats(field_name):
-            field_value = getattr(self, field_name)
-            other_field_value = getattr(other, field_name)
-            diff = (other_field_value or 0) - (field_value or 0)
-            if not field_value:
-                percentage = None
-            else:
-                percentage = diff / field_value * 100
-            return {"diff": diff, "percentage": percentage, "this_value": field_value, "other_value": other_field_value}
-
-        data = {
-            "hours": calc_stats("incurred_hours"),
-            "bill_rate_avg": calc_stats("bill_rate_avg"),
-            "money": calc_stats("incurred_money"),
-        }
-        if abs(data["hours"]["diff"]) > 10 and (not data["hours"]["percentage"] or abs(data["hours"]["percentage"]) > 25):
-            data["remarkable"] = True
-        if abs(data["bill_rate_avg"]["diff"]) > 5 and data["bill_rate_avg"]["this_value"] > 0 and data["bill_rate_avg"]["other_value"] > 0:
-            data["remarkable"] = True
-        if abs(data["money"]["diff"]) > 2000 and (not data["money"]["percentage"] or abs(data["money"]["percentage"]) > 25):
-            data["remarkable"] = True
-        return data
-
     class Meta:
-        unique_together = ("year", "week", "client", "project")
-        ordering = ("-year", "-week", "client", "project")
+        unique_together = ("year", "week", "project_m")
+        ordering = ("-year", "-week", "project_m")
 
 
 class SlackChannel(models.Model):
@@ -357,7 +308,6 @@ class Project(models.Model):
 
     def __str__(self):
         return u"%s - %s" % (self.client, self.name)
-
 
     class Meta:
         ordering = ("client", "name")
@@ -461,7 +411,6 @@ class ProjectFixedEntry(models.Model):
 
     def __str__(self):
         return u"%s - %s - %s" % (self.project, self.description, self.price)
-
 
 
 class AmazonLinkedAccount(models.Model):

@@ -754,9 +754,13 @@ def weekly_report_summary(request, weekly_report_id):
 
 
 @login_required
-def delete_weekly_report_summary(request, weekly_report_id=None, weekly_report_comment_id=None):
+def delete_weekly_report_comment(request, weekly_report_id=None, weekly_report_comment_id=None):
     comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
     if comment:
-        comment.delete()
+        comment.text = ""
+        comment.save()
+        messages.add_message(request, messages.INFO, 'Deleted weekly report comment.')
+    else:
+        messages.add_message(request, messages.WARNING, 'Comment not found.')
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))

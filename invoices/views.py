@@ -737,7 +737,7 @@ def weekly_report_page(request, weekly_report_id, **_):
 
 
 @login_required
-def weekly_report_page_change_of_scope(request, weekly_report_id):
+def weekly_report_change_of_scope(request, weekly_report_id):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
     if request.method == "POST" and request.POST.get("change-of-scope"):

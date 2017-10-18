@@ -273,6 +273,37 @@ def people_list(request):
     return render(request, "people.html", {"people": people_data, "year": year, "month": month})
 
 
+def project_this_week(request, project_id, year, week):
+
+    people_data = {}
+    #for person in FeetUser.objects.filter(archived=False, project=project_id):
+    for entry in HourEntry.objects.exclude(incurred_hours=0).filter(date__year=year, date__week=week, project_m_id=project_id):
+        if entry.user_email not in people_data:
+            #persons = FeetUser.objects.filter(user_id=entry.user_m_id)
+            #if persons:
+            people_data[entry.user_email] = {"billable": {"incurred_hours": 0, "incurred_money": 0},
+                                     "non-billable": {"incurred_hours": 0, "incurred_money": 0}, "person": entry.user_m,
+                                     "issues": 0}
+        if entry.calculated_is_billable:
+            k = "billable"
+        else:
+            k = "non-billable"
+        people_data[entry.user_email][k]["incurred_hours"] += entry.incurred_hours
+        people_data[entry.user_email][k]["incurred_money"] += entry.incurred_money
+        if not entry.calculated_has_notes or not entry.calculated_has_phase or not entry.calculated_has_category:
+            people_data[entry.user_email]["issues"] += 1
+    for person in people_data.values():
+        incurred_hours = person["billable"]["incurred_hours"] + person["non-billable"]["incurred_hours"]
+        person["incurred_hours"] = incurred_hours
+        if incurred_hours > 0:
+            person["invoicing_ratio"] = person["billable"]["incurred_hours"] / incurred_hours * 100
+            person["bill_rate_avg"] = person["billable"]["incurred_money"] / incurred_hours
+        if person["billable"]["incurred_hours"] > 0:
+            person["bill_rate_avg_billable"] = person["billable"]["incurred_money"] / person["billable"][
+                "incurred_hours"]
+    return render(request, "project_this_week.html", {"people": people_data, "year": year, "week": week})
+
+
 def parse_date(date_string):
     return datetime.datetime.strptime(date_string, "%Y-%m-%d").date()
 

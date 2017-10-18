@@ -13,7 +13,7 @@
 </form>
 
 {% if latest_summary %}
-  <form method="post" action="{% url 'delete_weekly_report_summary' weekly_report.weekly_report_id latest_summary.id %}">
+  <form method="post" action="{% url 'delete_weekly_report_comment' weekly_report.weekly_report_id latest_summary.id %}">
     {% csrf_token %}
     <button type="submit" class="btn btn-primary">Delete</button>
   </form>

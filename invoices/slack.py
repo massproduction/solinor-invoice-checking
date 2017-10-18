@@ -112,10 +112,10 @@ def send_slack_notification(project):
 def send_unchecked_weekly_report_notification(year, week):
 
     for weekly_report in WeeklyReport.objects.all().filter(project_m__enable_weekly_notifications=True, year=year, week=week-1):
-        message = """You have an unapproved weekly report at <https://solinor-finance.herokuapp.com/weekly_report/%s|Solinor Finance service>.""" % weekly_report.weekly_report_id
         if weekly_report.project_m.slack_channel:
             channel = weekly_report.project_m.slack_channel
             if weekly_report.weekly_report_state == "C":
+                message = """You have an unapproved weekly report at <https://solinor-finance.herokuapp.com/weekly_report/%s|Solinor Finance service>.""" % weekly_report.weekly_report_id
                 slack.chat.post_message(channel, message)
         else:
             logger.info("Could not get channel for project %s", weekly_report.project)

@@ -375,10 +375,19 @@ class Phase(models.Model):
 
 
 class WeeklyReportComments(models.Model):
+    WEEKLY_REPORT_COMMENT_TYPES = (
+        ("CS", "Change of scope"),
+        ("CU", "Custom page"),
+        ("S", "Summary"),
+        ("A", "Approval")
+    )
     weekly_report = models.ForeignKey("WeeklyReport")
     timestamp = models.DateTimeField(auto_now_add=True)
+    type = models.CharField(max_length=2, choices=WEEKLY_REPORT_COMMENT_TYPES, default="A")
+    text = models.TextField(max_length=1000, null=True)
     checked = models.BooleanField(blank=True, default=False)
     user = models.TextField(max_length=100)
+    header = models.CharField(max_length=100, null=True)
 
     class Meta:
         get_latest_by = "timestamp"

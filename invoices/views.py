@@ -731,6 +731,11 @@ def weekly_report_page(request, weekly_report_id, **_):
     except WeeklyReportComments.DoesNotExist:
         latest_comments = None
 
+    try:
+        latest_summary = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="S").latest()
+    except WeeklyReportComments.DoesNotExist:
+        latest_summary = None
+
     previous_weekly_reports = []
 
     if weekly_report.project_m:
@@ -742,6 +747,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         "weekly_report": weekly_report,
         "form_data": latest_comments,
         "previous_weekly_reports": previous_weekly_reports,
+        "latest_summary": latest_summary
     }
 
     context.update(entry_data)
@@ -765,3 +771,27 @@ def weekly_report_page(request, weekly_report_id, **_):
         pass
 
     return render(request, "weekly_report_page.html", context)
+
+
+@login_required
+def weekly_report_summary(request, weekly_report_id):
+    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+
+    if request.POST.get("wr-summary"):
+        comment = WeeklyReportComments(type="S", text=request.POST.get("wr-summary"), user=request.user.email, weekly_report=weekly_report)
+        comment.save()
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+
+@login_required
+def delete_weekly_report_comment(request, weekly_report_id=None, weekly_report_comment_id=None):
+    comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
+    if comment:
+        comment.text = ""
+        comment.save()
+        messages.add_message(request, messages.INFO, 'Deleted weekly report comment.')
+    else:
+        messages.add_message(request, messages.WARNING, 'Comment not found.')
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))

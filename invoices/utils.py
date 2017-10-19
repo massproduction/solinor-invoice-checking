@@ -337,3 +337,10 @@ def refresh_weekly_stats(start_date, end_date):
         stats = calculate_weekly_entry_stats(entries, aws_entries)
 
         refresh_report(weekly_report, stats)
+
+
+def latest_or_none(model, **kwargs):
+    try:
+        return model.objects.filter(**kwargs).latest()
+    except model.DoesNotExist:
+        return None

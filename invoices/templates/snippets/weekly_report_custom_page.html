@@ -1,0 +1,38 @@
+{% for custom_page in custom_pages %}
+  <form method="post" action="{% url 'update_weekly_report_comment' weekly_report.weekly_report_id custom_page.id%}" style="padding-bottom: 15px">
+    {% csrf_token %}
+    <div class="form-group">
+      <label for="custom-page-heading">Custom page title</label>
+      <input id="custom-page-heading" name="header" type="text" class="form-control" value="{{ custom_page.header }}"/>
+    </div>
+    <div class="form-group">
+      <label for="custom-page">
+        Separate bullet points by newline
+      </label>
+      <textarea id="custom-page" name="text" rows="10" class="form-control">{{ custom_page.text }}</textarea>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-primary">Save</button>
+      <button type="submit" class="btn btn-danger" formaction="{% url 'delete_weekly_report_comment' weekly_report.weekly_report_id custom_page.id %}">Delete</button>
+    </div>
+    <p>Last submitted by {{ custom_page.user }} at {{ custom_page.timestamp }}</p>
+
+  </form>
+{% endfor %}
+<form method="post" action="{% url 'new_weekly_report_comment' weekly_report.weekly_report_id %}">
+  {% csrf_token %}
+  <div class="form-group">
+    <label for="custom-page-heading">New custom page title</label>
+    <input id="custom-page-heading" name="header" type="text" class="form-control"/>
+  </div>
+  <div class="form-group">
+    <label for="custom-page">
+      Separate bullet points by newline
+    </label>
+    <textarea id="custom-page" name="text" rows="10" class="form-control">{{ custom_page.text }}</textarea>
+  </div>
+
+  <button type="submit" class="btn btn-primary">Save</button>
+
+</form>

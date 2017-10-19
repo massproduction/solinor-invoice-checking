@@ -36,7 +36,10 @@ def get_content_for_pdf(entries, request):
         if entry.phase_name not in phases:
             phases[entry.phase_name] = []
         phases[entry.phase_name].append(entry)
-    context = {"phases": phases}
+    context = {
+        "phases": phases,
+        "STATIC_ROOT": settings.STATIC_ROOT
+    }
 
     # We can generate the pdf from a url, file or, as shown here, a string
     return render_to_string('pdf_template.html', context=context, request=request)

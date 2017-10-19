@@ -699,6 +699,7 @@ def weekly_report_page(request, weekly_report_id, **_):
     latest_approval = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="A")
     latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="CS")
     latest_summary = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="S")
+    custom_pages = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="CU")
 
     if latest_change_of_scope is None:
         project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
@@ -716,7 +717,8 @@ def weekly_report_page(request, weekly_report_id, **_):
         "form_data": latest_approval,
         "change_of_scope": latest_change_of_scope,
         "previous_weekly_reports": previous_weekly_reports,
-        "latest_summary": latest_summary
+        "latest_summary": latest_summary,
+        "custom_pages": custom_pages
     }
 
     context.update(entry_data)
@@ -766,12 +768,47 @@ def weekly_report_summary(request, weekly_report_id):
 
 
 @login_required
-def delete_weekly_report_comment(request, weekly_report_id=None, weekly_report_comment_id=None):
+def empty_weekly_report_comment(request, weekly_report_id=None, weekly_report_comment_id=None):
     comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
     if comment:
         comment.text = ""
+        comment.user = request.user.email
         comment.save()
-        messages.add_message(request, messages.INFO, 'Deleted weekly report comment.')
+        messages.add_message(request, messages.INFO, "Deleted weekly report comment.")
+    else:
+        messages.add_message(request, messages.WARNING, "Comment not found.")
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+
+@login_required
+def update_weekly_report_comment(request, weekly_report_id, weekly_report_comment_id=None):
+    comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
+    if comment:
+        comment.text = request.POST.get("text")
+        comment.header = request.POST.get("header")
+        comment.user = request.user.email
+        comment.save()
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+
+@login_required
+def new_weekly_report_comment(request, weekly_report_id):
+    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+    comment = WeeklyReportComments(type="CU", header=request.POST.get("header"), text=request.POST.get("text"),
+                                   user=request.user.email, weekly_report=weekly_report)
+    comment.save()
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+
+@login_required
+def delete_weekly_report_comment(request, weekly_report_id, weekly_report_comment_id):
+    comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
+    if comment:
+        comment.delete()
+        messages.add_message(request, messages.INFO, "Deleted weekly report comment")
     else:
         messages.add_message(request, messages.WARNING, 'Comment not found.')
 

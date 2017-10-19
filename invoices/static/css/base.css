@@ -17,3 +17,6 @@ h2 {
 .strikethrough {
   text-decoration: line-through;
 }
+.well.well-lighter-bg-color {
+  background-color: #fbfbfb;
+}

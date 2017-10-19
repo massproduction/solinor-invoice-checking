@@ -47,14 +47,18 @@
         <div class="well">
           {% include "snippets/weekly_report_accept.html" %}
         </div>
-        <div class="well">
-          {% include "snippets/weekly_report_summary.html" %}
-        </div>
-        <div class="well">
-          {% include "snippets/weekly_report_change_of_scope.html" %}
-        </div>
-        <div class="well">
-          {% include "snippets/weekly_report_custom_page.html" %}
+
+        <div class="well well-lighter-bg-color">
+          <h4>Weekly report PDF</h4>
+          <div class="well">
+            {% include "snippets/weekly_report_summary.html" %}
+          </div>
+          <div class="well">
+            {% include "snippets/weekly_report_change_of_scope.html" %}
+          </div>
+          <div class="well">
+            {% include "snippets/weekly_report_custom_page.html" %}
+          </div>
         </div>
       </div>
 

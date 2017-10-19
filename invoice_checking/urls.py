@@ -22,6 +22,7 @@ urlpatterns = [
     url(r'^invoice/(?P<invoice_id>[0-9A-Fa-f-]+)/pdf$', invoices.views.get_pdf, name="get_invoice_pdf"),
     url(r'^invoice/(?P<invoice_id>[0-9A-Fa-f-]+)$', invoices.views.invoice_page, name="invoice"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)$', invoices.views.weekly_report_page, name="weekly_report"),
+    url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/change_of_scope$', invoices.views.weekly_report_change_of_scope, name="weekly_report_change_of_scope"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/summary$', invoices.views.weekly_report_summary, name="weekly_report_summary"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/comments/(?P<weekly_report_comment_id>[0-9A-Fa-f-]+)?/delete$', invoices.views.delete_weekly_report_comment, name="delete_weekly_report_comment"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/pdf$', invoices.views.get_pdf, name="get_weekly_pdf"),

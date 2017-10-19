@@ -29,6 +29,7 @@ from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices
 from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries, compare_invoices
 import invoices.date_utils as date_utils
 from invoices.chart_utils import gen_treemap_data_projects, gen_treemap_data_users
+from invoices.utils import latest_or_none
 
 REDIS = redis.from_url(settings.REDIS)
 
@@ -695,15 +696,13 @@ def weekly_report_page(request, weekly_report_id, **_):
         weekly_report.save()
         return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
 
-    try:
-        latest_comments = WeeklyReportComments.objects.filter(weekly_report=weekly_report).latest()
-    except WeeklyReportComments.DoesNotExist:
-        latest_comments = None
+    latest_approval = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="A")
+    latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="CS")
+    latest_summary = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="S")
 
-    try:
-        latest_summary = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="S").latest()
-    except WeeklyReportComments.DoesNotExist:
-        latest_summary = None
+    if latest_change_of_scope is None:
+        project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
+        latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report__in=project_previous_weekly_reports, type="CS")
 
     previous_weekly_reports = []
 
@@ -714,7 +713,8 @@ def weekly_report_page(request, weekly_report_id, **_):
         "today": today,
         "entries": entries,
         "weekly_report": weekly_report,
-        "form_data": latest_comments,
+        "form_data": latest_approval,
+        "change_of_scope": latest_change_of_scope,
         "previous_weekly_reports": previous_weekly_reports,
         "latest_summary": latest_summary
     }
@@ -740,6 +740,18 @@ def weekly_report_page(request, weekly_report_id, **_):
         pass
 
     return render(request, "weekly_report_page.html", context)
+
+
+@login_required
+def weekly_report_change_of_scope(request, weekly_report_id):
+    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+
+    if request.method == "POST" and request.POST.get("change-of-scope"):
+        comment = WeeklyReportComments(type="CS", user=request.user.email, text=request.POST.get("change-of-scope"), weekly_report=weekly_report)
+        comment.save()
+        messages.add_message(request, messages.INFO, 'Saved change of scope.')
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
 
 
 @login_required

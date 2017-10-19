@@ -704,11 +704,6 @@ def weekly_report_page(request, weekly_report_id, **_):
         project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
         latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report__in=project_previous_weekly_reports, type="CS")
 
-    try:
-        latest_summary = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="S").latest()
-    except WeeklyReportComments.DoesNotExist:
-        latest_summary = None
-
     previous_weekly_reports = []
 
     if weekly_report.project_m:

@@ -144,7 +144,7 @@ def get_invoices():
 def get_weekly_reports():
     weekly_report_data = {}
     for weekly_report in WeeklyReport.objects.all():
-        weekly_report_key = u"%s-%s %s - %s" % (weekly_report.year, weekly_report.week, weekly_report.project_m.client, weekly_report.project_m.project)
+        weekly_report_key = u"%s-%s %s - %s" % (weekly_report.year, weekly_report.week, weekly_report.project_m.client, weekly_report.project_m.name)
         weekly_report_data[weekly_report_key] = weekly_report
     return weekly_report_data
 

@@ -87,12 +87,10 @@ def generate_weekly_report_pdf(request, weekly_report_id):
     for person in persons:
         week_hours_per_person.append({
             "name": person.display_name,
-            "average_bill_rate": mean(list(map((lambda x: x.bill_rate), week_hour_entries.filter(user_id=person.user_id)))),
-            "incurred_hours": sum(list(map((lambda x: x.incurred_hours), week_hour_entries.filter(user_id=person.user_id)))),
-            "incurred_money": sum(list(map((lambda x: x.incurred_money), week_hour_entries.filter(user_id=person.user_id))))
+            "average_bill_rate": mean(map((lambda x: x.bill_rate), week_hour_entries.filter(user_id=person.user_id))),
+            "incurred_hours": sum(map((lambda x: x.incurred_hours), week_hour_entries.filter(user_id=person.user_id))),
+            "incurred_money": sum(map((lambda x: x.incurred_money), week_hour_entries.filter(user_id=person.user_id)))
         })
-
-    print(week_hours_per_person)
 
     summary_this_week = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="S")
     change_of_scope = latest_change_of_scope_or_none(weekly_report_data)

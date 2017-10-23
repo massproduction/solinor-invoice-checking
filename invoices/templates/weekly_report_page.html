@@ -31,7 +31,8 @@
           </ul>
         </div>
         {% endif %}
-        <a class="btn btn-info" href="{% url 'get_weekly_pdf' weekly_report.weekly_report_id %}" role="button">Download hours</a>
+        <a class="btn btn-info" href="{% url 'get_weekly_hours_pdf' weekly_report.weekly_report_id %}" role="button">Download hours</a>
+        <a class="btn btn-info" href="{% url 'get_weekly_report_pdf' weekly_report.weekly_report_id %}" role="button">Download weekly report</a>
         <a class="btn btn-info" href="{% url 'weekly_report_hours' weekly_report.weekly_report_id %}" role="button">View hours</a>
         <a class="btn btn-info" href="{% url 'project_this_week' weekly_report.project_m_id weekly_report.year weekly_report.week %}" role="button">View project hours</a>
       </div>
@@ -60,9 +61,6 @@
           <div class="well">
             {% include "snippets/weekly_report_custom_page.html" %}
           </div>
-        </div>
-        <div class="well">
-          {% include "snippets/weekly_report_change_of_scope.html" %}
         </div>
       </div>
 

@@ -24,12 +24,12 @@ from django_tables2 import RequestConfig
 from invoices.models import HourEntry, Invoice, WeeklyReport, Comments, DataUpdate, FeetUser, Project, AuthToken, \
     InvoiceFixedEntry, ProjectFixedEntry, AmazonInvoiceRow, AmazonLinkedAccount, WeeklyReportComments
 from invoices.filters import InvoiceFilter, ProjectsFilter, CustomerHoursFilter, HourListFilter
-from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report
+from invoices.pdf_utils import generate_hours_pdf_for_invoice, generate_hours_pdf_for_weekly_report, generate_weekly_report_pdf
 from invoices.tables import HourListTable, CustomerHoursTable, FrontpageInvoices, ProjectsTable, ProjectDetailsTable
 from invoices.invoice_utils import generate_amazon_invoice_data, calculate_entry_stats, calculate_weekly_entry_stats, get_aws_entries, compare_invoices
 import invoices.date_utils as date_utils
 from invoices.chart_utils import gen_treemap_data_projects, gen_treemap_data_users
-from invoices.utils import latest_or_none
+from invoices.utils import latest_or_none, latest_change_of_scope_or_none
 
 REDIS = redis.from_url(settings.REDIS)
 
@@ -350,6 +350,16 @@ def get_pdf(request, invoice_id=None, weekly_report_id=None):
     response['Content-Disposition'] = u'attachment; filename="Hours for %s.pdf"' % title
     return response
 
+
+@login_required
+def get_weekly_report_pdf(request, weekly_report_id):
+    pdf, title = generate_weekly_report_pdf(request, weekly_report_id)
+
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response['Content-Disposition'] = u'attachment; filename="%s.pdf"' % title
+    return response
+
+    # return render(request, "weekly_report_pdf_template.html", pdf)
 
 @login_required
 def frontpage(request):
@@ -728,13 +738,10 @@ def weekly_report_page(request, weekly_report_id, **_):
         return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
 
     latest_approval = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="A")
-    latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="CS")
     latest_summary = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="S")
     custom_pages = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="CU")
 
-    if latest_change_of_scope is None:
-        project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
-        latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report__in=project_previous_weekly_reports, type="CS")
+    latest_change_of_scope = latest_change_of_scope_or_none(weekly_report)
 
     previous_weekly_reports = []
 
@@ -816,8 +823,8 @@ def empty_weekly_report_comment(request, weekly_report_id=None, weekly_report_co
 def update_weekly_report_comment(request, weekly_report_id, weekly_report_comment_id=None):
     comment = get_object_or_404(WeeklyReportComments, id=weekly_report_comment_id)
     if comment:
-        comment.text = request.POST.get("text")
-        comment.header = request.POST.get("header")
+        comment.text = request.POST.get("text") or ""
+        comment.header = request.POST.get("header") or ""
         comment.user = request.user.email
         comment.save()
 

@@ -6,7 +6,7 @@ from django.utils.dateparse import parse_datetime as django_parse_datetime
 from django.conf import settings
 
 from invoices.tenkfeet_api import TenkFeetApi
-from invoices.models import HourEntry, Invoice, is_phase_billable, Project, FeetUser, WeeklyReport
+from invoices.models import HourEntry, Invoice, is_phase_billable, Project, FeetUser, WeeklyReport, WeeklyReportComments
 from invoices.slack import send_slack_notification
 from invoices.invoice_utils import calculate_entry_stats, get_aws_entries, calculate_weekly_entry_stats
 
@@ -344,3 +344,11 @@ def latest_or_none(model, **kwargs):
         return model.objects.filter(**kwargs).latest()
     except model.DoesNotExist:
         return None
+
+
+def latest_change_of_scope_or_none(weekly_report):
+    latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="CS")
+    if latest_change_of_scope is None:
+        project_previous_weekly_reports = WeeklyReport.objects.filter(project_m=weekly_report.project_m, year=weekly_report.year, week__lt=weekly_report.week) | WeeklyReport.objects.filter(project_m=weekly_report.project_m, year__lt=weekly_report.year)
+        latest_change_of_scope = latest_or_none(WeeklyReportComments, weekly_report__in=project_previous_weekly_reports, type="CS")
+    return latest_change_of_scope

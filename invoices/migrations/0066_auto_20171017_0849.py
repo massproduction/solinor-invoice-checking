@@ -28,4 +28,8 @@ class Migration(migrations.Migration):
             model_name='weeklyreport',
             name='project',
         ),
+        migrations.RemoveField(
+            model_name='weeklyreport',
+            name='has_comments',
+        ),
     ]

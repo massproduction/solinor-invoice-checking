@@ -1,0 +1,42 @@
+.new-page {
+  page-break-before: always;
+  padding: 2em;
+}
+
+.weekly-report-pdf {
+  color: #333;
+}
+
+.weekly-report-pdf h1 {
+  font-size: 40pt;
+}
+
+.weekly-report-pdf h2 {
+  font-size: 30pt;
+}
+
+.weekly-report-pdf ul li {
+  font-size: 20pt;
+  list-style: none;
+}
+
+.weekly-report-pdf .change-of-scope p {
+  margin-top: 2em;
+}
+
+.title-page {
+  padding-top: 15em;
+}
+
+.weekly-report-pdf ul li::before {
+  color: #A33;
+  /* color of bullet or square */
+  content: "\2022";
+  /* Unicode of character to precede the list item */
+  font-size: 20pt;
+  /* em or %*/
+  padding-right: 1.1225em;
+  /* use em*/
+  position: relative;
+  top: 0;
+}

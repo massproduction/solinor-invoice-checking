@@ -94,7 +94,7 @@ def generate_weekly_report_pdf(request, weekly_report_id):
 
     summary_this_week = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="S")
     next_week = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="NW")
-    change_of_scope = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="CS")
+    change_of_scope = latest_change_of_scope_or_none(weekly_report_data)
     custom_pages = WeeklyReportComments.objects.filter(weekly_report_id=weekly_report_id, type="CU")
     if custom_pages:
         custom_pages = list(map(lambda x: {"header": x.header, "bullets": x.text.splitlines()}, custom_pages))

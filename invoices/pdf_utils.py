@@ -93,6 +93,7 @@ def generate_weekly_report_pdf(request, weekly_report_id):
         })
 
     summary_this_week = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="S")
+    next_week = latest_or_none(WeeklyReportComments, weekly_report_id=weekly_report_id, type="NW")
     change_of_scope = latest_change_of_scope_or_none(weekly_report_data)
     custom_pages = WeeklyReportComments.objects.filter(weekly_report_id=weekly_report_id, type="CU")
     if custom_pages:
@@ -107,6 +108,7 @@ def generate_weekly_report_pdf(request, weekly_report_id):
             "total_money": sum(map((lambda x: x.incurred_money), week_hour_entries))
         },
         "summary_this_week_bullets": summary_this_week.text.splitlines() if hasattr(summary_this_week, "text") else None,
+        "next_week_bullets": next_week.text.splitlines() if hasattr(next_week, "text") else None,
         "change_of_scope": {
             "bullets": change_of_scope.text.splitlines() if hasattr(change_of_scope, "text") else None,
             "last_changed": (str(change_of_scope.weekly_report.year) + " - " + str(change_of_scope.weekly_report.week)) if hasattr(change_of_scope, "weekly_report") else None

@@ -24,6 +24,7 @@ urlpatterns = [
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)$', invoices.views.weekly_report_page, name="weekly_report"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/change_of_scope$', invoices.views.weekly_report_change_of_scope, name="weekly_report_change_of_scope"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/summary$', invoices.views.weekly_report_summary, name="weekly_report_summary"),
+    url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/next_week$', invoices.views.weekly_report_next_week, name="weekly_report_next_week"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/comments/(?P<weekly_report_comment_id>[0-9A-Fa-f-]+)?/delete$', invoices.views.delete_weekly_report_comment, name="delete_weekly_report_comment"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/comments/(?P<weekly_report_comment_id>[0-9A-Fa-f-]+)?/empty$', invoices.views.empty_weekly_report_comment, name="empty_weekly_report_comment"),
     url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/comments/(?P<weekly_report_comment_id>[0-9A-Fa-f-]+)?/update$', invoices.views.update_weekly_report_comment, name="update_weekly_report_comment"),

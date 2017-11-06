@@ -327,7 +327,8 @@ class WeeklyReportComments(models.Model):
         ("CS", "Change of scope"),
         ("CU", "Custom page"),
         ("S", "Summary"),
-        ("A", "Approval")
+        ("A", "Approval"),
+        ("NW", "Next week")
     )
     weekly_report = models.ForeignKey("WeeklyReport")
     timestamp = models.DateTimeField(auto_now_add=True)

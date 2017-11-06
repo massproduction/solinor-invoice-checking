@@ -23,6 +23,18 @@
   </div>
 {% endif %}
 
+<!-- NEXT WEEK -->
+{% if next_week_bullets %}
+  <div class="new-page next-week">
+    <h2>Plan for next week</h2>
+    <ul>
+      {% for bullet_list_item in next_week_bullets %}
+        <li class="bullet-list-item">{{ bullet_list_item }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+{% endif %}
+
 <!-- CHANGE OF SCOPE -->
 {% if change_of_scope %}
   <div class="new-page change-of-scope">
@@ -35,7 +47,6 @@
     <p>Last changed on {{ change_of_scope.last_changed }}</p>
   </div>
 {% endif %}
-
 
 <!-- CUSTOM PAGES -->
 {% if custom_pages %}

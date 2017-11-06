@@ -738,6 +738,7 @@ def weekly_report_page(request, weekly_report_id, **_):
         return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report.weekly_report_id]))
 
     latest_approval = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="A")
+    latest_next_week = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="NW")
     latest_summary = latest_or_none(WeeklyReportComments, weekly_report=weekly_report, type="S")
     custom_pages = WeeklyReportComments.objects.filter(weekly_report=weekly_report, type="CU")
 
@@ -756,7 +757,8 @@ def weekly_report_page(request, weekly_report_id, **_):
         "change_of_scope": latest_change_of_scope,
         "previous_weekly_reports": previous_weekly_reports,
         "latest_summary": latest_summary,
-        "custom_pages": custom_pages
+        "custom_pages": custom_pages,
+        "latest_next_week": latest_next_week
     }
 
     context.update(entry_data)
@@ -783,26 +785,30 @@ def weekly_report_page(request, weekly_report_id, **_):
 
 
 @login_required
-def weekly_report_change_of_scope(request, weekly_report_id):
+def weekly_report_comment(request, weekly_report_id, name, type):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
-    if request.method == "POST" and request.POST.get("change-of-scope"):
-        comment = WeeklyReportComments(type="CS", user=request.user.email, text=request.POST.get("change-of-scope"), weekly_report=weekly_report)
+    if request.method == "POST" and request.POST.get(name):
+        comment = WeeklyReportComments(type=type, user=request.user.email, text=request.POST.get(name), weekly_report=weekly_report)
         comment.save()
-        messages.add_message(request, messages.INFO, 'Saved change of scope.')
+        messages.add_message(request, messages.INFO, 'Saved')
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
 
 
 @login_required
+def weekly_report_change_of_scope(request, weekly_report_id):
+    return weekly_report_comment(request, weekly_report_id, "change-of-scope", "CS")
+
+
+@login_required
 def weekly_report_summary(request, weekly_report_id):
-    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+    return weekly_report_comment(request, weekly_report_id, "wr-summary", "S")
 
-    if request.POST.get("wr-summary"):
-        comment = WeeklyReportComments(type="S", text=request.POST.get("wr-summary"), user=request.user.email, weekly_report=weekly_report)
-        comment.save()
 
-    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+@login_required
+def weekly_report_next_week(request, weekly_report_id):
+    return weekly_report_comment(request, weekly_report_id, "wr-next-week", "NW")
 
 
 @login_required

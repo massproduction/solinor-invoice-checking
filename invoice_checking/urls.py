@@ -3,6 +3,9 @@ from django.contrib import admin
 from django.views.generic.base import RedirectView
 from django.conf import settings
 
+from invoices.views import WeeklyReportPDFSummaryForm, WeeklyReportPDFNextWeekForm
+from invoices.views import WeeklyReportPDFWizard
+
 import invoices.views
 
 
@@ -48,6 +51,7 @@ urlpatterns = [
     url(r'^accounts/', include('googleauth.urls')),
     url(r'^$', invoices.views.frontpage, name="frontpage"),
     url(r'^admin/', admin.site.urls),
+    url(r'^weekly_report/(?P<weekly_report_id>[0-9A-Fa-f-]+)/wizard$', WeeklyReportPDFWizard.as_view([WeeklyReportPDFSummaryForm, WeeklyReportPDFNextWeekForm]), name="wr_wizard"),
 ]
 
 if settings.DEBUG:

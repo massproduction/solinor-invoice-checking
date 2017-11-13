@@ -18,6 +18,8 @@ from django.conf import settings
 from django.utils import timezone
 from django.db.models import Count, Sum, Q
 from django.db.models.functions import TruncMonth
+from django import forms
+from formtools.wizard.views import SessionWizardView
 
 from django_tables2 import RequestConfig
 
@@ -784,14 +786,19 @@ def weekly_report_page(request, weekly_report_id, **_):
     return render(request, "weekly_report_page.html", context)
 
 
-@login_required
 def weekly_report_comment(request, weekly_report_id, name, type):
     weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
 
     if request.method == "POST" and request.POST.get(name):
-        comment = WeeklyReportComments(type=type, user=request.user.email, text=request.POST.get(name), weekly_report=weekly_report)
-        comment.save()
-        messages.add_message(request, messages.INFO, 'Saved')
+        return weekly_report_comment(request, weekly_report_id, request.user.email, request.POST.get(name), weekly_report, name, type)
+
+    return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+def weekly_report_comment_with_text(request, weekly_report_id, email, text, weekly_report, type):
+
+    comment = WeeklyReportComments(type=type, user=email, text=text, weekly_report=weekly_report)
+    comment.save()
+    messages.add_message(request, messages.INFO, 'Saved')
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
 
@@ -857,3 +864,30 @@ def delete_weekly_report_comment(request, weekly_report_id, weekly_report_commen
         messages.add_message(request, messages.WARNING, 'Comment not found.')
 
     return HttpResponseRedirect(reverse("weekly_report", args=[weekly_report_id]))
+
+
+class WeeklyReportPDFSummaryForm(forms.Form):
+    summary_page = forms.CharField(widget=forms.Textarea)
+
+
+class WeeklyReportPDFNextWeekForm(forms.Form):
+    next_week_page = forms.CharField(widget=forms.Textarea)
+
+
+class WeeklyReportPDFWizard(SessionWizardView):
+    template_name = "weekly_report_pdf_wizard.html"
+    form_list = [WeeklyReportPDFSummaryForm, WeeklyReportPDFNextWeekForm]
+
+    def done(self, form_list, **kwargs):
+        do_something_with_the_form_data(self.request, kwargs["weekly_report_id"], [form.cleaned_data for form in form_list])
+        return HttpResponseRedirect(reverse("weekly_report", args=[kwargs["weekly_report_id"]]))
+
+
+def do_something_with_the_form_data(request, weekly_report_id, form_list):
+    weekly_report = get_object_or_404(WeeklyReport, weekly_report_id=weekly_report_id)
+
+    for form in form_list:
+        if next(iter(form)) is "summary_page":
+            weekly_report_comment_with_text(request, weekly_report_id, request.user.email, form.get("summary_page"), weekly_report, "S")
+        elif next(iter(form)) is "next_week_page":
+            weekly_report_comment_with_text(request, weekly_report_id, request.user.email, form.get("next_week_page"), weekly_report, "NW")

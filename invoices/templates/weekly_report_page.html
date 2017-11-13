@@ -26,7 +26,7 @@
           </button>
           <ul class="dropdown-menu" aria-labelledby="dropdownMenu1">
             {% for previous_report in previous_weekly_reports %}
-            <li><a href="{% url "weekly_report" previous_report.weekly_report_id %}">{{ previous_report.date }}</a></li>
+            <li><a href="{% url 'weekly_report' previous_report.weekly_report_id %}">{{ previous_report.date }}</a></li>
             {% endfor %}
           </ul>
         </div>
@@ -35,6 +35,7 @@
         <a class="btn btn-info" href="{% url 'get_weekly_report_pdf' weekly_report.weekly_report_id %}" role="button">Download weekly report</a>
         <a class="btn btn-info" href="{% url 'weekly_report_hours' weekly_report.weekly_report_id %}" role="button">View hours</a>
         <a class="btn btn-info" href="{% url 'project_this_week' weekly_report.project_m_id weekly_report.year weekly_report.week %}" role="button">View project hours</a>
+        <a class="btn btn-info" href="{% url 'wr_wizard' weekly_report.weekly_report_id %}" role="button">PDF wizard</a>
       </div>
     </div>
     <div class="row">

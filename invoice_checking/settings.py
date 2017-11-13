@@ -85,6 +85,7 @@ INSTALLED_APPS = (
     'django_tables2',
     'invoices',
     'flex_hours',
+    'widget_tweaks',
 )
 
 if DEBUG:
